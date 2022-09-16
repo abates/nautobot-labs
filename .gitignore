@@ -1,0 +1,11 @@
+# Ansible Retry Files
+*.retry
+
+# Swap files
+*.swp
+
+# Rando
+creds.env
+
+# Invoke overrides
+invoke.yml

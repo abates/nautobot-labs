@@ -1,0 +1,16 @@
+dn: cn=loginusers,ou=groups,dc=example,dc=org
+cn: loginusers
+objectClass: groupOfNames
+member: cn=user01,ou=users,dc=example,dc=org
+member: cn=user02,ou=users,dc=example,dc=org
+member: cn=user03,ou=users,dc=example,dc=org
+
+dn: cn=tenant1,ou=groups,dc=example,dc=org
+cn: tenant1
+objectClass: groupOfNames
+member: cn=user01,ou=users,dc=example,dc=org
+
+dn: cn=tenant2,ou=groups,dc=example,dc=org
+cn: tenant2
+objectClass: groupOfNames
+member: cn=user02,ou=users,dc=example,dc=org

@@ -1,0 +1,25 @@
+- model: tenancy.tenant
+  pk: 11cd7081-f2e0-4d6d-9d8c-6c41cf7e850d
+  fields:
+    name: Tenant 1
+    slug: tenant-one
+- model: tenancy.tenant
+  pk: ae88acdf-daf0-410d-b3f1-b25b2f04e8c2
+  fields:
+    name: Tenant 2
+    slug: tenant-two
+
+- model: dcim.site
+  pk: 0dba9c59-4eb8-4905-8590-8ac9b0fcd47f
+  fields:
+    status: ["Active"]
+    name: Site 1
+    slug: site-1
+    tenant: 11cd7081-f2e0-4d6d-9d8c-6c41cf7e850d
+- model: dcim.site
+  pk: 14f8bc3e-4488-4883-b766-e36179475102
+  fields:
+    status: ["Active"]
+    name: Site 2
+    slug: site-2
+    tenant: ae88acdf-daf0-410d-b3f1-b25b2f04e8c2

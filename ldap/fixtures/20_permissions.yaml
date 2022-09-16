@@ -1,0 +1,53 @@
+- model: auth.group
+  fields:
+    name: tenant1
+
+- model: auth.group
+  fields:
+    name: tenant2
+
+- model: users.objectpermission
+  pk: b33c8ba3-a18a-4f03-a16a-fc1c37de87f4
+  fields:
+    name: Permissions for Tenant 1
+    enabled: true
+    actions: '["view", "add", "change", "delete"]'
+    constraints:
+      tenant__slug: tenant-one
+    object_types:
+    - ["circuits", "circuit"]
+    - ["dcim", "device"]
+    - ["dcim", "rack"]
+    - ["dcim", "rackreservation"]
+    - ["dcim", "site"]
+    - ["ipam", "ipaddress"]
+    - ["ipam", "prefix"]
+    - ["ipam", "vlan"]
+    - ["ipam", "vrf"]
+    - ["virtualization", "virtualmachine"]
+    - ["virtualization", "cluster"]
+    groups:
+    - ["tenant1"]
+
+- model: users.objectpermission
+  pk: 94c79b62-148d-4ce3-97a0-030d296fb0d7
+  fields:
+    name: Permissions for Tenant 2
+    enabled: true
+    actions: '["view", "add", "change", "delete"]'
+    constraints:
+      tenant__slug: tenant-one
+    object_types:
+    - ["circuits", "circuit"]
+    - ["dcim", "device"]
+    - ["dcim", "rack"]
+    - ["dcim", "rackreservation"]
+    - ["dcim", "site"]
+    - ["ipam", "ipaddress"]
+    - ["ipam", "prefix"]
+    - ["ipam", "vlan"]
+    - ["ipam", "vrf"]
+    - ["virtualization", "virtualmachine"]
+    - ["virtualization", "cluster"]
+    groups:
+    - ["tenant2"]

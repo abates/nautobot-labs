@@ -1,0 +1,16 @@
+---
+version: "3.8"
+
+services:
+  ldap:
+    image: docker.io/bitnami/openldap:2.6
+    env_file:
+      - "../config/lab.env"
+      - "../config/creds.env"
+    volumes:
+      - "../ldifs:/ldifs"
+      - "ldap_data:/bitnami/openldap"
+volumes:
+  ldap_data:
+    driver: local
+
