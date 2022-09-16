@@ -1,0 +1,8 @@
+#!/bin/bash
+
+DIR=`dirname $0`
+. $DIR/../config/creds.env
+
+BIND_DN=cn=${LDAP_ADMIN_USERNAME},dc=example,dc=org
+BIND_PASSWORD=${LDAP_ADMIN_PASSWORD}
+

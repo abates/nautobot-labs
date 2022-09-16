@@ -108,7 +108,9 @@ def docker_compose(context, command, **kwargs):
         def __getattr__(self, attr):
             return getattr(sys.stdout, attr)
 
-    streamer = Streamer()
+    streamer = None
+    if kwargs.pop("launch_browser", False):
+        streamer = Streamer()
     return context.run(compose_command, env=build_env, out_stream=streamer, **kwargs)
 
 
@@ -151,14 +153,14 @@ def run_command(context, command, container="nautobot", **kwargs):
 def debug(context):
     """Start Nautobot and its dependencies in debug mode."""
     print("Starting Nautobot in debug mode...", file=sys.stderr)
-    docker_compose(context, "up")
+    docker_compose(context, "up", launch_browser=True)
 
 
 @task
 def start(context):
     """Start Nautobot and its dependencies in detached mode."""
     print("Starting Nautobot in detached mode...", file=sys.stderr)
-    docker_compose(context, "up --detach")
+    docker_compose(context, "up --detach", launch_browser=True)
 
 
 @task

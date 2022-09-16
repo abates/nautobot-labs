@@ -1,10 +1,8 @@
 #!/bin/bash
 
 DIR=`dirname $0`
-. $DIR/../docker/creds.env
+. lab_env
 
-BIND_DN=cn=${LDAP_ADMIN_USERNAME},dc=example,dc=org
-BIND_PASSWORD=${LDAP_ADMIN_PASSWORD}
 SEARCH_BASE="dc=example,dc=org"
 
 docker exec lab_ldap_ldap_1 ldapsearch \
