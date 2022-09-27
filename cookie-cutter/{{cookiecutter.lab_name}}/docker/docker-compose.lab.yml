@@ -1,0 +1,11 @@
+---
+version: "3.8"
+
+services:
+{% for service in cookiecutter.additional_services %}
+  {{service}}:
+    image: {{ cookiecutter.additional_images[loop.index0] }}
+    env_file:
+      - "../config/lab.env"
+      - "../config/creds.env"
+{% endfor %}
