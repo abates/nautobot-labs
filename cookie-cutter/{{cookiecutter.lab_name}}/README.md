@@ -1,0 +1,1 @@
+# {{ cookiecutter.lab_title }}
