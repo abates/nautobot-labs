@@ -36,7 +36,7 @@
     enabled: true
     actions: '["view", "add", "change", "delete"]'
     constraints:
-      tenant__slug: tenant-one
+      tenant__slug: tenant-two
     object_types:
     - ["circuits", "circuit"]
     - ["dcim", "device"]
