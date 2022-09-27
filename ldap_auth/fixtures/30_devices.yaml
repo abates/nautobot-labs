@@ -77,7 +77,7 @@
     device_type: 99bd63af-cf21-448f-b832-0ba31117d808
     device_role: 9f6c674d-5665-4f59-b64d-eb827c961e1f
     tenant: ae88acdf-daf0-410d-b3f1-b25b2f04e8c2
-    name: device1
+    name: device2
     site: 14f8bc3e-4488-4883-b766-e36179475102
 - model: dcim.device
   pk: f7d58e67-19aa-42d6-9248-c3b6e06a3321
@@ -86,7 +86,7 @@
     device_type: 99bd63af-cf21-448f-b832-0ba31117d808
     device_role: 9f6c674d-5665-4f59-b64d-eb827c961e1f
     tenant: 11cd7081-f2e0-4d6d-9d8c-6c41cf7e850d
-    name: device2
+    name: device3
     site: 14f8bc3e-4488-4883-b766-e36179475102
 - model: dcim.device
   pk: 91a1da3b-b8a9-4dbb-9b63-47c026c41bf8
@@ -95,7 +95,7 @@
     device_type: 99bd63af-cf21-448f-b832-0ba31117d808
     device_role: 9f6c674d-5665-4f59-b64d-eb827c961e1f
     tenant: ae88acdf-daf0-410d-b3f1-b25b2f04e8c2
-    name: device2
+    name: device4
     site: 14f8bc3e-4488-4883-b766-e36179475102
 - model: dcim.device
   pk: 80e2c75d-97b2-495a-bd3e-3d322db6ee0d
@@ -104,7 +104,7 @@
     device_type: 99bd63af-cf21-448f-b832-0ba31117d808
     device_role: 9f6c674d-5665-4f59-b64d-eb827c961e1f
     tenant: 11cd7081-f2e0-4d6d-9d8c-6c41cf7e850d
-    name: device3
+    name: device5
     site: 14f8bc3e-4488-4883-b766-e36179475102
 - model: dcim.device
   pk: e023b7f4-e3a4-4c04-a5c5-082c108bf9fe
@@ -113,5 +113,5 @@
     device_type: 99bd63af-cf21-448f-b832-0ba31117d808
     device_role: 9f6c674d-5665-4f59-b64d-eb827c961e1f
     tenant: ae88acdf-daf0-410d-b3f1-b25b2f04e8c2
-    name: device3
+    name: device6
     site: 14f8bc3e-4488-4883-b766-e36179475102
