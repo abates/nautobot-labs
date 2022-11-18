@@ -119,6 +119,7 @@ def launch_browser(context, url=None):
     try:
         if url is None:
             lab_name = context.nautobot_lab.project_name + "_" + context.nautobot_lab.lab_name
+            print("The lab name is", lab_name)
             result = context.run(f"docker port {lab_name}_nautobot_1", hide=True, warn=True)
             _, port = result.stdout.rsplit(":", 2)
             url = f"http://127.0.0.1:{port}/"
@@ -170,13 +171,13 @@ def get_current_lab(context, raise_on_not_found=False):
 def start(context, lab_name):
     """Start Nautobot and its dependencies in debug mode."""
     print(f"Starting {lab_name}...", file=sys.stderr)
-    context.nautobot_lab.lab_name = lab_name
+    context.nautobot_lab.lab_name = lab_name.rstrip("\\/")
     docker_compose(context, "up", launch_browser=True)
 
 @task
 def config(context, lab_name):
     """Start Nautobot and its dependencies in debug mode."""
-    context.nautobot_lab.lab_name = lab_name
+    context.nautobot_lab.lab_name = lab_name.rstrip("\\/")
     docker_compose(context, "config", launch_browser=True)
 
 @task
@@ -199,7 +200,7 @@ def stop(context):
 def destroy(context, lab_name):
     """Destroy all containers and volumes."""
     print("Destroying Nautobot...", file=sys.stderr)
-    context.nautobot_lab.lab_name = lab_name
+    context.nautobot_lab.lab_name = lab_name.rstrip("\\/")
     docker_compose(context, "down --volumes")
 
 

@@ -6,3 +6,8 @@ services:
     build:
       context: "git_server"
       dockerfile: "./Dockerfile"
+    volumes:
+      - "git_server_repos:/internal/repos"
+
+volumes:
+  git_server_repos: {}

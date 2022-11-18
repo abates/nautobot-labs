@@ -9,3 +9,6 @@ creds.env
 
 # Invoke overrides
 invoke.yml
+
+# Local labs not part of the main repository
+/local
