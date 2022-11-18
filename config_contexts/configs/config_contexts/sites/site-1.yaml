@@ -1,0 +1,10 @@
+_metadata:
+  name: "Site 1 Static Routes"
+  weight: 1000
+  is_active: true
+
+static-routes:
+  site_default:
+    destination: 0.0.0.0/0
+    interface: Management0
+    vrf: OOB

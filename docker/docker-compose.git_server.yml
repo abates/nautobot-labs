@@ -1,0 +1,8 @@
+---
+version: "3.8"
+
+services:
+  git_server:
+    build:
+      context: "git_server"
+      dockerfile: "./Dockerfile"

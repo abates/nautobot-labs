@@ -1,0 +1,5 @@
+static-routes:
+  CUSTOMER-A:
+    destination: 10.10.0.0/8
+    interface: Ethernet2/3
+    vrf: CUSTOMER-A

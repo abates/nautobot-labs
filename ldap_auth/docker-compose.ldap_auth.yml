@@ -1,0 +1,10 @@
+---
+version: "3.8"
+
+services:
+  nautobot:
+    volumes:
+      - "../ldap_auth:/opt/nautobot/labs/ldap_auth"
+  ldap:
+    volumes:
+      - "../ldap_auth/ldifs:/ldifs"

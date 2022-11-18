@@ -1,0 +1,17 @@
+---
+version: "3.8"
+
+services:
+  nautobot:
+    env_file:
+      - "ldap.env"
+  ldap:
+    image: docker.io/bitnami/openldap:2.6
+    env_file:
+      - "ldap.env"
+    volumes:
+      - "ldap_data:/bitnami/openldap"
+volumes:
+  ldap_data:
+    driver: local
+
