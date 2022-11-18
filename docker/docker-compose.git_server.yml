@@ -8,6 +8,9 @@ services:
       dockerfile: "./Dockerfile"
     volumes:
       - "git_server_repos:/internal/repos"
-
+    networks:
+      default:
+        aliases:
+          - git-server.local
 volumes:
   git_server_repos: {}
