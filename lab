@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+
+import glob
+import itertools
+import os
+import subprocess
+import sys
+
+PROJECT_PREFIX="nautobot_labs_"
+COMPOSE_HTTP_TIMEOUT="86400"
+NAUTOBOT_VER="1.5"
+PYTHON_VER="3.9"
+
+def compose_files(component):
+    basedir = os.path.dirname(__file__)
+    component_dir = os.path.join(basedir, component)
+    if os.path.exists(component_dir):
+        files = []
+        sub_components = []
+        if os.path.exists(os.path.join(component_dir, "components")):
+            with open(os.path.join(component_dir, "components")) as file:
+                sub_components = file.read().strip().split("\n")
+
+            for sub_component in sub_components:
+                files.extend(compose_files(sub_component))
+        files.extend(glob.glob(os.path.join(component_dir, "docker-compose.*.yml")))
+        return files
+
+    compose_file = os.path.join(basedir, "docker", f"docker-compose.{component}.yml")
+    if os.path.exists(compose_file):
+        return [compose_file]
+
+
+def docker_compose(command, lab_name, run_exec=False, args=[]):
+    compose_dir = os.path.join(os.path.dirname(__file__), "docker")
+    project_name = PROJECT_PREFIX + lab_name
+    compose_command = [
+            "docker-compose",
+            "--project-name",
+            project_name,
+            "--project-directory",
+            compose_dir,
+            *itertools.chain(*zip(itertools.repeat("-f"), compose_files(lab_name))),
+            command,
+            *args,
+    ]
+
+    env = {
+        **os.environ,
+        "COMPOSE_HTTP_TIMEOUT": COMPOSE_HTTP_TIMEOUT,
+        "NAUTOBOT_VER": NAUTOBOT_VER,
+        "PYTHON_VER": PYTHON_VER,
+    }
+    
+    if run_exec:
+        os.execvpe(compose_command[0], compose_command, env)
+    else:
+        subprocess.run(compose_command, env=env)
+
+def get_labs(all_labs=False):
+    command = ["docker", "ps"]
+    if all_labs:
+        command.append("-a")
+
+    command.extend(["--filter", "label=com.docker.compose.project", "-q"])
+    running_container_ids = subprocess.check_output(command).strip().split()
+
+    result = set()
+    for container_id in running_container_ids:
+        command = ["docker", "inspect", "--format={{index .Config.Labels \"com.docker.compose.project\"}}", container_id]
+        project_name = subprocess.check_output(command, text=True).strip()
+        if project_name.startswith(PROJECT_PREFIX):
+            result.add(project_name[len(PROJECT_PREFIX):])
+    return list(result)
+
+def get_current_lab(exit_on_not_found=False):
+    labs = get_labs()
+    if labs:
+        return labs[0]
+
+    if exit_on_not_found:
+        print("No lab is currently running", file=sys.stderr)
+        sys.exit()
+    return None
+
+
+def pull(lab_name):
+    print(f"Pulling {lab_name} images...", file=sys.stderr)
+    docker_compose("pull", lab_name)
+
+def start(lab_name):
+    pull(lab_name)
+    print(f"Starting {lab_name}...", file=sys.stderr)
+    docker_compose("up", lab_name, True)
+
+
+def stop(lab_name):
+    print(f"Stopping {lab_name}...", file=sys.stderr)
+    docker_compose("stop", lab_name)
+
+
+def clean(lab_name):
+    labs = [lab_name]
+    if lab_name == "all":
+        labs = get_labs(True)
+
+    for lab_name in labs:
+        stop(lab_name)
+        print(f"Removing all containers for {lab_name}...", file=sys.stderr)
+        docker_compose("down", lab_name, args=["--remove-orphans", "--volumes"])
+
+
+if __name__ == "__main__":
+    cmd = sys.argv[1]
+    try:
+        lab_name = sys.argv[2].rstrip("/")
+    except IndexError:
+        if cmd == "start":
+            print("Lab name is required", file=sys.stderr)
+            sys.exit(1)
+
+        lab_name = get_current_lab(exit_on_not_found=True)
+
+    if cmd == "start":
+        start(lab_name)
+    elif cmd == "stop":
+        stop(lab_name)
+    elif cmd == "clean":
+        clean(lab_name)
