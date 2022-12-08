@@ -21,8 +21,7 @@ services:
       - /dev/fuse:/dev/fuse
       - /dev/net/tun:/dev/net/tun
     ports:
-      - "8051:8051"  # http
-      - "8052:8052"  # http
+      - "8052"  # http
   awx-redis:
     image: "redis:6-alpine"
     command:

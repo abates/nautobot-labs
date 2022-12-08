@@ -231,13 +231,10 @@ LOGGING = {
     },
     "loggers": {
         "django": {"handlers": ["normal_console"], "level": "INFO"},
+        "django.server": {"handlers": ["normal_console"], "level": "WARN"},
         "nautobot": {
             "handlers": ["verbose_console" if DEBUG else "normal_console"],
             "level": LOG_LEVEL,
-        },
-        'django_auth_ldap': {
-            'handlers': ["verbose_console" if DEBUG else "normal_console"],
-            'level': 'DEBUG',
         },
     },
 }
