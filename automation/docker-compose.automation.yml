@@ -1,0 +1,14 @@
+---
+services:
+  nautobot:
+    volumes:
+      - "../automation/:/opt/nautobot/labs/automation"
+  awx:
+    env_file:
+      - "../automation/automation.env"
+    volumes:
+      - "../automation/projects:/projects"
+      - "../automation/conf.d:/opt/awx/conf.d/automation"
+  git_server:
+    volumes:
+      - "../automation/projects:/repos"

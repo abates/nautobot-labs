@@ -1,0 +1,8 @@
+---
+- name: List All Inventory
+  hosts: all
+  connection: local
+  tasks:
+    - debug:
+        var: inventory_hostname
+      delegate_to: localhost

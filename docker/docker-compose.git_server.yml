@@ -6,7 +6,7 @@ services:
     build:
       context: "git_server"
       dockerfile: "./Dockerfile"
-    image: "nautobot-labs/git-server"
+    image: "ghcr.io/abates/git-server:latest"
     volumes:
       - "git_server_repos:/internal/repos"
     networks:

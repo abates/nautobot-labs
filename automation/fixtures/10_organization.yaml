@@ -1,0 +1,26 @@
+- model: users.user
+  fields:
+    password: !
+    username: awx
+    email: awx@example.com
+    is_superuser: true
+    is_staff: true
+    is_active: true
+
+- model: users.token
+  pk: 3864db86-5e48-453d-9a0f-fc2132d7a57b
+  fields:
+    user:
+    - awx
+    created: 2022-12-08 18:14:31.778396+00:00
+    expires: null
+    key: c5b76ab6885627bda9dc4f20ed3b39c8cdb0bc1e
+    write_enabled: true
+
+- model: dcim.site
+  pk: 0dba9c59-4eb8-4905-8590-8ac9b0fcd47f
+  fields:
+    status: ["Active"]
+    name: Site 1
+    slug: site-1
+

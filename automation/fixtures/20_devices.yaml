@@ -1,0 +1,95 @@
+# All the fixture data for devices. This includes manufacturer, 
+# device type, device role, and the devices themselves
+
+# Manufacturers
+- model: dcim.manufacturer
+  pk: dd513a53-3dc0-4d15-8a5d-18c4ab17527d
+  fields:
+    name: Arista
+    slug: arista
+
+- model: dcim.platform
+  pk: 2e40a314-9cb5-4f97-8cae-131579f5e800
+  fields:
+    name: vEOS
+    slug: veos
+    manufacturer: dd513a53-3dc0-4d15-8a5d-18c4ab17527d
+
+# Device Types
+- model: dcim.devicetype
+  pk: 99bd63af-cf21-448f-b832-0ba31117d808
+  fields:
+    manufacturer: dd513a53-3dc0-4d15-8a5d-18c4ab17527d
+    model: vEOS
+    slug: arista-veos
+
+# Device Role
+- model: dcim.devicerole
+  pk: 9f6c674d-5665-4f59-b64d-eb827c961e1f
+  fields:
+    name: border-leaf
+    slug: border-leaf
+    color: 673ab7
+    vm_role: false
+
+- model: dcim.devicerole
+  pk: 0b04fa7f-e5c9-4f52-bd18-034748a399c4
+  fields:
+    name: spine
+    slug: spine
+    color: 9c27b0
+    vm_role: false
+
+- model: dcim.devicerole
+  pk: 6f4160e1-e111-4aab-9cb5-a1a2daa091f7
+  fields:
+    name: leaf
+    slug: leaf
+    color: 5cd65c
+    vm_role: false
+
+# Devices
+- model: dcim.device
+  pk: 0147eb79-ba42-423a-b23a-d5bbd0e8e358
+  fields:
+    status: ["Active"]
+    device_type: 99bd63af-cf21-448f-b832-0ba31117d808
+    device_role: 9f6c674d-5665-4f59-b64d-eb827c961e1f
+    name: border-leaf
+    site: 0dba9c59-4eb8-4905-8590-8ac9b0fcd47f
+
+- model: dcim.device
+  pk: c0e5b690-44dc-43ab-988e-36c5a2051514
+  fields:
+    status: ["Active"]
+    device_type: 99bd63af-cf21-448f-b832-0ba31117d808
+    device_role: 0b04fa7f-e5c9-4f52-bd18-034748a399c4
+    name: spine1
+    site: 0dba9c59-4eb8-4905-8590-8ac9b0fcd47f
+
+- model: dcim.device
+  pk: f7d58e67-19aa-42d6-9248-c3b6e06a3321
+  fields:
+    status: ["Active"]
+    device_type: 99bd63af-cf21-448f-b832-0ba31117d808
+    device_role: 0b04fa7f-e5c9-4f52-bd18-034748a399c4
+    name: spine2
+    site: 0dba9c59-4eb8-4905-8590-8ac9b0fcd47f
+
+- model: dcim.device
+  pk: 91a1da3b-b8a9-4dbb-9b63-47c026c41bf8
+  fields:
+    status: ["Active"]
+    device_type: 99bd63af-cf21-448f-b832-0ba31117d808
+    device_role: 6f4160e1-e111-4aab-9cb5-a1a2daa091f7
+    name: leaf1
+    site: 0dba9c59-4eb8-4905-8590-8ac9b0fcd47f
+
+- model: dcim.device
+  pk: 80e2c75d-97b2-495a-bd3e-3d322db6ee0d
+  fields:
+    status: ["Active"]
+    device_type: 99bd63af-cf21-448f-b832-0ba31117d808
+    device_role: 6f4160e1-e111-4aab-9cb5-a1a2daa091f7
+    name: leaf2
+    site: 0dba9c59-4eb8-4905-8590-8ac9b0fcd47f

@@ -2,6 +2,7 @@
 
 import glob
 import itertools
+import json
 import os
 import subprocess
 import sys
@@ -10,6 +11,22 @@ PROJECT_PREFIX="nautobot_labs_"
 COMPOSE_HTTP_TIMEOUT="86400"
 NAUTOBOT_VER="1.5"
 PYTHON_VER="3.9"
+
+COMMANDS = {}
+
+def command(fn):
+    global COMMANDS
+    COMMANDS[fn.__name__] = fn
+    return fn
+
+def service_command(fn):
+    def wrapper(lab_name, service_name=None):
+        if service_name is None:
+            service_name = lab_name
+            lab_name = get_current_lab(exit_on_not_found=True)
+        fn(lab_name, service_name)
+    wrapper.__name__ = fn.__name__
+    return command(wrapper)
 
 def compose_files(component):
     basedir = os.path.dirname(__file__)
@@ -31,7 +48,7 @@ def compose_files(component):
         return [compose_file]
 
 
-def docker_compose(command, lab_name, run_exec=False, args=[]):
+def docker_compose(command, lab_name, run_exec=False, args=[], capture_output=False):
     compose_dir = os.path.join(os.path.dirname(__file__), "docker")
     project_name = PROJECT_PREFIX + lab_name
     compose_command = [
@@ -54,29 +71,49 @@ def docker_compose(command, lab_name, run_exec=False, args=[]):
     
     if run_exec:
         os.execvpe(compose_command[0], compose_command, env)
-    else:
-        subprocess.run(compose_command, env=env)
 
-def get_labs(all_labs=False):
+    result = subprocess.run(compose_command, env=env, capture_output=capture_output)
+    result.check_returncode()
+    return result
+
+def get_service(lab_name, service_name):
+    args = [
+        "--format",
+        "json",
+        service_name
+    ]
+    result = docker_compose("ps", lab_name, args=args, capture_output=True)
+    return json.loads(result.stdout)[0]
+
+def get_labs(match_name=None, running=False):
     command = ["docker", "ps"]
-    if all_labs:
+    if not running:
         command.append("-a")
 
+    if match_name == "all":
+        match_name = None
+
     command.extend(["--filter", "label=com.docker.compose.project", "-q"])
-    running_container_ids = subprocess.check_output(command).strip().split()
+    container_ids = subprocess.check_output(command).strip().split()
 
     result = set()
-    for container_id in running_container_ids:
+    for container_id in container_ids:
         command = ["docker", "inspect", "--format={{index .Config.Labels \"com.docker.compose.project\"}}", container_id]
         project_name = subprocess.check_output(command, text=True).strip()
         if project_name.startswith(PROJECT_PREFIX):
-            result.add(project_name[len(PROJECT_PREFIX):])
+            lab_name = project_name[len(PROJECT_PREFIX):]
+            if match_name and lab_name == match_name:
+                return [lab_name]
+            result.add(lab_name)
     return list(result)
 
 def get_current_lab(exit_on_not_found=False):
-    labs = get_labs()
-    if labs:
+    labs = get_labs(running=True)
+    if len(labs) == 1:
         return labs[0]
+    elif len(labs) > 1:
+        print(f"More than one lab is currently running ({labs}). Please select a specific lab.", file=sys.stderr)
+        sys.exit()
 
     if exit_on_not_found:
         print("No lab is currently running", file=sys.stderr)
@@ -88,27 +125,69 @@ def pull(lab_name):
     print(f"Pulling {lab_name} images...", file=sys.stderr)
     docker_compose("pull", lab_name)
 
+@command
 def start(lab_name):
     pull(lab_name)
     print(f"Starting {lab_name}...", file=sys.stderr)
     docker_compose("up", lab_name, True)
 
+@service_command
+def restart(lab_name, service_name):
+    docker_compose("restart", lab_name, args=[service_name])
 
+
+@service_command
+def stop_service(lab_name, service_name):
+    docker_compose("stop", lab_name, args=[service_name])
+
+
+@service_command
+def start_service(lab_name, service_name):
+    docker_compose("start", lab_name, args=[service_name])
+
+
+@command
 def stop(lab_name):
     print(f"Stopping {lab_name}...", file=sys.stderr)
     docker_compose("stop", lab_name)
 
 
+@command
 def clean(lab_name):
-    labs = [lab_name]
-    if lab_name == "all":
-        labs = get_labs(True)
-
-    for lab_name in labs:
+    for lab_name in get_labs(lab_name):
         stop(lab_name)
         print(f"Removing all containers for {lab_name}...", file=sys.stderr)
         docker_compose("down", lab_name, args=["--remove-orphans", "--volumes"])
 
+@command
+def ps(lab_name):
+    for lab_name in get_labs(lab_name):
+        print(f"Services running for {lab_name}")
+        docker_compose("ps", lab_name)
+        print()
+
+@service_command
+def browse(lab_name, service_name):
+    data = get_service(lab_name, service_name)
+    published_port = data["Publishers"][0]["PublishedPort"]
+    url = f"http://127.0.0.1:{published_port}/"
+    cmd = []
+    if sys.platform == "linux" or sys.platform == "linux2":
+        cmd = ["xdg-open", url]
+    elif sys.platform == "darwin":
+        cmd = ["open", url]
+    elif sys.platform == "win32":
+        cmd = ["start", url]
+    os.execvp(cmd[0], cmd)
+
+@service_command
+def cli(lab_name, service_name):
+    args = [
+        "-it",
+        service_name,
+        "/bin/bash"
+    ]
+    docker_compose("exec", lab_name, args=args, run_exec=True)
 
 if __name__ == "__main__":
     cmd = sys.argv[1]
@@ -121,9 +200,10 @@ if __name__ == "__main__":
 
         lab_name = get_current_lab(exit_on_not_found=True)
 
-    if cmd == "start":
-        start(lab_name)
-    elif cmd == "stop":
-        stop(lab_name)
-    elif cmd == "clean":
-        clean(lab_name)
+    if cmd in COMMANDS:
+        try:
+            COMMANDS[cmd](lab_name, *sys.argv[3:])
+        except subprocess.CalledProcessError:
+            sys.exit(1)
+    else:
+        print(f"Unknown command {cmd}", file=sys.stderr)
