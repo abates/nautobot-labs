@@ -1,6 +1,6 @@
 ---
 x-nautobot-base: &nautobot-base
-  image: "ghcr.io/nautobot/nautobot:${NAUTOBOT_VER}-py${PYTHON_VER}"
+  image: "ghcr.io/nautobot/nautobot-dev:${NAUTOBOT_VER}-py${PYTHON_VER}"
   environment:
       - "NAUTOBOT_DB_ENGINE=django.db.backends.postgresql"
   env_file:

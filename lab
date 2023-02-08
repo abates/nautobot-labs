@@ -190,6 +190,11 @@ def cli(lab_name, service_name):
     docker_compose("exec", lab_name, args=args, run_exec=True)
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        commands = "|".join(COMMANDS.keys())
+        print(f"Usage {sys.argv[0]} [{commands}]", file=sys.stderr)
+        sys.exit(1)
+
     cmd = sys.argv[1]
     try:
         lab_name = sys.argv[2].rstrip("/")
