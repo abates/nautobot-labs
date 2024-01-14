@@ -3,15 +3,8 @@ version: "3.8"
 
 services:
   git_server:
-    build:
-      context: "git_server"
-      dockerfile: "./Dockerfile"
     image: "ghcr.io/abates/git-server:latest"
-    volumes:
-      - "git_server_repos:/internal/repos"
     networks:
       default:
         aliases:
           - git-server.local
-volumes:
-  git_server_repos: {}

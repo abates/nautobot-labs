@@ -4,7 +4,7 @@ services:
     depends_on: 
       awx-db:
         condition: service_healthy
-    image: "ghcr.io/abates/nautobot-labs-awx:21.9.0"
+    image: "ghcr.io/abates/nautobot-labs-awx:21.11.0"
     command: launch_awx.sh
     environment:
       RUN_MIGRATIONS: 1

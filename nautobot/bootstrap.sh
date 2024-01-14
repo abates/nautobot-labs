@@ -14,6 +14,14 @@ for APP_DIR in `ls $APPS_DIR` ; do
   fi
 done
 
+# Install other requirements
+if [ -e $APPS_DIR/requirements.txt ] ; then
+  wd=$(pwd)
+  cd $APPS_DIR
+  pip install -r requirements.txt
+  cd $wd
+fi
+
 # Create the nautobot config
 cat /opt/nautobot/default_nautobot_config.py > /opt/nautobot/nautobot_config.py
 if [ -e $APPS_DIR/nautobot_config.py ] ; then

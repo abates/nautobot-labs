@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "lab-builder"
+version = "0.1.0"
+description = ""
+authors = ["Andrew Bates <abates@omeganetserv.com>"]
+readme = "README.md"
+packages = [{include = "lab_builder"}]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+typer = {extras = ["all"], version = "^0.9.0"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
