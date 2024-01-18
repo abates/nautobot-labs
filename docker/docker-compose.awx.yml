@@ -1,0 +1,54 @@
+---
+services:
+  awx:
+    depends_on: 
+      awx-db:
+        condition: service_healthy
+    user: "501"
+    build:
+      context: "awx"
+      dockerfile: Dockerfile
+    image: "local/awx"
+    command: launch_awx.sh
+    environment:
+      RUN_MIGRATIONS: 1
+    cap_add:
+      - SYS_ADMIN
+      - SYS_RESOURCE
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+      - label:disable
+    tty: true
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - "8051:8051"  # http
+      - "8052:8052"  # http
+  awx-redis:
+    image: "redis:6-alpine"
+    command:
+      - "sh"
+      - "-c"  # this is to evaluate the $NAUTOBOT_REDIS_PASSWORD from the env
+      - "redis-server --appendonly yes"
+  awx-db:
+    image: "postgres:13-alpine"
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: awx
+      POSTGRES_DB: awx
+      POSTGRES_PASSWORD: shuOKNHPUwtxdxjNjMoZ
+    volumes:
+      - "awx_db:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "awx"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+volumes:
+  awx_db:
+    name: tools_awx_db
+  redis_socket_1:
+    name: tools_redis_socket_1

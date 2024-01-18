@@ -1,11 +1,12 @@
 from lab_builder.lab import Lab
 
-from .nautobot import Nautobot
+from .services import NautobotService
 
 class BasicNautobotLab(Lab):
+    """A lab that contains a simple Nautobot application stack."""
     name = "Nautobot"
-    applications = [
-        Nautobot
-    ]
+    services = {
+        "nautobot": NautobotService,
+    }
 
 lab = BasicNautobotLab
