@@ -3,10 +3,9 @@ import inspect
 import os
 
 
-def resolve_binds(layer_or_node, binds: list[str]):
+def resolve_binds(layer, binds: list[str]):
     resolved_binds = []
     if binds:
-        relative_dir = os.path.dirname(inspect.getfile(layer_or_node.__class__))
         for bind in binds:
             read_only = ""
             if bind.endswith(":ro"):
@@ -19,14 +18,16 @@ def resolve_binds(layer_or_node, binds: list[str]):
                 # "named" path and put it in the corresponding
                 # node directory
                 if local.startswith("./"):
-                    local = os.path.join(relative_dir, local[2:])
+                    local = os.path.join(layer.definition_directory(), local[2:])
                     read_only = ":ro"
                 else:
-                    local = os.path.join(layer_or_node.directory, local)
+                    local = os.path.join(layer.state_directory(), local)
                     # the local path won't match the glob, since this
                     # directory hasn't been created yet, so just add it
                     # and let later handlers create the directory
                     resolved_binds.append(f"{local}:{remote}")
+            elif not local.startswith(layer.state_directory()):
+                read_only = ":ro"
             
             matches = glob.glob(local)
             if len(matches) == 1 and matches[0] == local:
@@ -37,7 +38,12 @@ def resolve_binds(layer_or_node, binds: list[str]):
                     resolved_binds.append(f"{match}:{match_remote}{read_only}")
     return resolved_binds
 
-def resolve_attribute(cls, attr_name, values):
+def resolve_attribute(obj, attr_name, values):
+    if inspect.isclass(obj):
+        cls = obj
+    else:
+        cls = obj.__class__
+
     # Copy the values, we don't want to be
     # modifying them and screwing something
     # up elsewhere
