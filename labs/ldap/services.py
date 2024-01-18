@@ -7,9 +7,12 @@ class LDAPServer(LinuxNode):
     binds = [
         "./bin/*:/usr/local/bin"
     ]
-    env = {
+    environment = {
         "LDAP_ADMIN_USERNAME": "admin",
         "LDAP_ADMIN_PASSWORD": "adminpassword",
+        "BIND_DN": "cn={LDAP_ADMIN_USERNAME},dc=example,dc=org",
+        "BIND_PASSWORD": "{LDAP_ADMIN_PASSWORD}",
+        "SEARCH_BASE": "dc=example,dc=org",
     }
 
 

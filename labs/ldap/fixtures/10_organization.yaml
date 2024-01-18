@@ -10,6 +10,7 @@
     name: Tenant 1
 - model: dcim.location
   fields:
+    name: Site 1
     location_type:
     - Site
     status:

@@ -1,11 +1,6 @@
 #!/bin/bash
 
-DIR=`dirname $0`
-. $DIR/../config/creds.env
-
-SEARCH_BASE="ou=groups,dc=example,dc=org"
-
-docker exec lab_ldap_ldap_1 ldapsearch \
+ldapsearch \
   -H ldap://localhost:1389 \
   -D "${BIND_DN}" \
   -w "${BIND_PASSWORD}" \

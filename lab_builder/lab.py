@@ -105,7 +105,10 @@ class Service(Layer):
 
     def resolve_environment(self, environment):
         """Format any templat strings contained in the given environment."""
-        service_environment = {**getattr(self, "environment", {})}
+        service_environment = {
+            **getattr(self, "environment", {}),
+            **environment,
+        }
         for key, value in environment.items():
             if isinstance(value, str):
                 environment[key] = value.format(**service_environment)
