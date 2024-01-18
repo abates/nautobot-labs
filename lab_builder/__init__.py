@@ -1,6 +1,6 @@
-from .lab import Application, Lab
+from .lab import Lab, Service
 
 __all__ = [
-    Application,
-    Lab,
+    "Lab",
+    "Service",
 ]

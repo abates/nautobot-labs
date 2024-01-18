@@ -1,55 +1,61 @@
 import cmd
 import importlib
+import os
+from pprint import pprint
+import sys
 
 from .lab import Lab
 
 def check_running(func):
-    def decorator(self, *args, **kwargs):
-        if self.lab is None:
-            self.lab = self.lab_class()
-            if not self.lab.running:
-                print(f"Error: {self.lab_class.name} is not running.")
-                return
+    def decorator(self: "LabRunner", *args, **kwargs):
+        if not self.lab.running:
+            print(f"Error: {self.lab.name} is not running.")
+            return
+        if self.lab.needs_reconfigure:
             self.lab.start()
         func(self, *args, **kwargs)
     return decorator
 
 
 class LabRunner(cmd.Cmd):
-    lab_class: type[Lab]
     lab: Lab
     intro = "Welcome to the lab builder.  Type help or ? to list commands.\n"
     file = None
 
     def __init__(self, lab: str):
         lab = lab.replace("/", ".").removesuffix(".py")
+        # sys.path.append(os.path.join(os.curdir, ".."))
+        # importlib.import_module("labs")
         module = importlib.import_module(lab)
-        self.lab_class: type[Lab] = module.lab
-        self.lab: Lab = None
+        self.lab: Lab = module.lab()
         super().__init__()
 
     @property
     def prompt(self):
-        return f"{self.lab_class.name}: "
+        """Display the command line prompt."""
+        return f"{self.lab.name}: "
 
     def do_start(self, _):
-        print("Starting", self.lab_class.name)
-        self.lab = self.lab_class()
+        """Run the `start` command."""
+        print("Starting", self.lab.name)
         self.lab.start()
 
     def do_inspect(self, _):
+        """Run the `inspect` command."""
         if self.lab is None:
-            self.lab = self.lab_class()
-        self.lab.running
+            self.lab = self.lab()
+        pprint(self.lab.inspect(), indent=2)
 
-    @check_running
     def do_stop(self, _):
-        print("Stopping", self.lab_class.name)
+        """Run the `stop` command."""
+        print("Stopping", self.lab.name)
         self.lab.stop()
 
     def do_exit(self, _):
+        """Run the `exit` command."""
         print()
         return True
 
     def do_EOF(self, arg):
+        """Stop the command line."""
         return self.do_exit(arg)
