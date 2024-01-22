@@ -69,7 +69,7 @@ class Redis(LinuxNode):
 class NautobotService(Service):
     """Nautobot application stack as a service."""
     nautobot_config = "nautobot_config.py.j2"
-    environment = {
+    shared_environment = {
         # Admin User
         "NAUTOBOT_CREATE_SUPERUSER": True,
         "NAUTOBOT_SUPERUSER_NAME": "admin",
@@ -101,9 +101,9 @@ class NautobotService(Service):
     }
 
     dependencies = {
-        "nautobot": Dependency(name="db", state=DependencyState.HEALTHY),
-        "worker": Dependency(name="nautobot", state=DependencyState.HEALTHY),
-        "scheduler": Dependency(name="nautobot", state=DependencyState.HEALTHY),
+        "nautobot": [Dependency(name="db", state=DependencyState.HEALTHY)],
+        "worker": [Dependency(name="nautobot", state=DependencyState.HEALTHY)],
+        "scheduler": [Dependency(name="nautobot", state=DependencyState.HEALTHY)],
     }
 
     ports = {
@@ -118,11 +118,12 @@ class NautobotService(Service):
 
         if config_template := getattr(self.__class__, "nautobot_config", None):
             template = self.load_template(config_template)
-            lab_config = os.path.join(self.directory, "nautobot_config.py")
+            lab_config = os.path.join(self.state_directory, "nautobot_config.py")
             with open(lab_config, "w", encoding="utf-8") as output:
                 output.write(template.render(extra_config=extra_config))
             self.nodes["nautobot"].binds.append(f"{lab_config}:/opt/nautobot/nautobot_config.py")
             self.nodes["worker"].binds.append(f"{lab_config}:/opt/nautobot/nautobot_config.py")
+            self.nodes["scheduler"].binds.append(f"{lab_config}:/opt/nautobot/nautobot_config.py")
 
     def load_template(self, name):
         searchpath = os.path.dirname(inspect.getfile(self.__class__))

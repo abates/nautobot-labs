@@ -1,52 +1,178 @@
 
-from abc import ABC, abstractmethod
+import glob
+import inspect
 import json
 import os
 import shutil
 import subprocess
+from types import NoneType
 import typing
 
-from lab_builder.util import resolve_attribute, resolve_binds
-
 if typing.TYPE_CHECKING:
-    from lab_builder.node import Node
+    from lab_builder.node import Node, Dependency
 
 
-class Layer(ABC):
+class Definition:
     def __init__(
             self,
             name: str,
-            parent: "Layer" = None,
-            dependencies: dict = None,
-            binds: dict = None,
-            ports: dict = None,
+            parent: "Definition" = None,
+            **kwargs,
         ):
         self.name = name
         self.parent = parent
-        self.dependencies = resolve_attribute(self.__class__, "dependencies", dependencies or {})
-        self.ports = resolve_attribute(self.__class__, "ports", ports or {})
-        self.binds = resolve_attribute(self.__class__, "binds", binds or {})
-        for node_name, node_binds in self.binds.items():
-            self.binds[node_name] = resolve_binds(self, node_binds)
+        type_hints = {}
+        for _class in reversed(self.__class__.__mro__):
+            type_hints.update(typing.get_type_hints(_class))
+
+        for attr_name, type_hint in type_hints.items():
+            attr_value = kwargs.pop(attr_name, None)
+            if (
+                getattr(self, attr_name, None) is None
+                or getattr(self, attr_name) is getattr(self.__class__, attr_name, None)
+            ):
+                setattr(self, attr_name, type_hint())
+            
+            self._update_attribute(attr_name, attr_value)
+
+            # Reverse the MRO so that we always start
+            # from the top most level first. This allows
+            # Layers that extend a layer to do overrides
+            for _class in reversed(self.__class__.__mro__):
+                if hasattr(_class, attr_name):
+                    self._update_attribute(attr_name, getattr(_class, attr_name))
+        keys = list(kwargs.keys())
+
+        if keys:
+            raise TypeError(f"{self.__class__.__name__}.__init__() got an unexpected keyword argument '{keys[0]}'")
+
+    def _resolve_binds(self, binds):
+        """Resolve compute absolute paths for the local directory in a list of binds.
+
+        The input binds can have the following formats:
+            * absolute - An absolute path is not changed, however if the path itself
+            is not within the layer's state directory, then the bind is marked read-only
+
+            * relative - A bind can be relative if the local part begins with `./`. The
+            bind is then joined with the layer's definition directory and marked read-only.
+
+            * named - A bind that is neither relative nor absolute is considered "named". The
+            named bind will be rooted in the layer's state directory and will be read-write.
+        Args:
+            layer (Layer): The layer where the binds need to be calculated
+            binds (list[str]): The list of volume binds (in `local:remote` format)
+
+        Returns:
+            list[str]: A copy of the original list where the local side of each bind
+            has been converted to an absolute path.
+        """
+        resolved_binds = []
+        if binds:
+            for bind in binds:
+                read_only = ""
+                if bind.endswith(":ro"):
+                    bind = bind[:-3]
+                    read_only = ":ro"
+                local, remote = bind.split(":", 1)
+                if not os.path.isabs(local):
+                    # If the local path starts with a ./ then treat
+                    # it as a local path, otherwise treat it as a
+                    # "named" path and put it in the corresponding
+                    # node directory
+                    if local.startswith("./"):
+                        local = os.path.join(self.definition_directory, local[2:])
+                        read_only = ":ro"
+                    else:
+                        local = os.path.join(self.state_directory, local)
+                        # the local path won't match the glob, since this
+                        # directory hasn't been created yet, so just add it
+                        # and let later handlers create the directory
+                        resolved_binds.append(f"{local}:{remote}")
+                elif not local.startswith(self.state_directory):
+                    read_only = ":ro"
+                
+                matches = glob.glob(local)
+                if len(matches) == 1 and matches[0] == local:
+                    resolved_binds.append(f"{local}:{remote}{read_only}")
+                else:
+                    for match in matches:
+                        match_remote = os.path.join(remote, os.path.basename(match))
+                        resolved_binds.append(f"{match}:{match_remote}{read_only}")
+        return resolved_binds
+
+    def _update_attribute(self, attr_name: str, value: typing.Union[dict, list, NoneType]):
+        """Update a layer instance's config attribute.
+
+        This method examine's the class hierarchy's type hinting
+        and will initialize a config attribute instance to the proper
+        type and will then update the attribute based on the input
+        value.
+
+        Args:
+            attr_name (str): The layer's config attribute to update.
+            value (typing.Union[dict, list, NoneType]): The value that should be updated
+            into the layer attribute.
+
+        Raises:
+            ValueError: If the input value type does not match the attribute value type.
+        """
+        if value is None:
+            return
+
+        self_value = getattr(self, attr_name)
+
+        if type(self_value) != type(value):
+            raise ValueError(f"{attr_name}: Mismatch type {type(self_value)} != {type(value)}")
+
+        if hasattr(self_value, "update"):
+            self_value.update(value)
+        elif hasattr(self_value, "extend"):
+            self_value.extend(value)
+        else:
+            setattr(self, attr_name, value)
 
     def _emit(self, signal):
         for child in self.children:
             getattr(child, signal)()
 
     @property
-    @abstractmethod
     def children(self):
         """Get the children of this layer."""
+        return []
+
+    def created(self):
+        """Create this layer's directory and then signal."""
+        self._emit("created")
 
     @property
-    def lab(self):
+    def definition_directory(self):
+        """Get the directory where the class definition is located."""
+        return os.path.dirname(inspect.getfile(self.__class__))
+
+    def destroyed(self):
+        """Signal all of the children of this layer that the layer has been destroyed."""
+        self._emit("stopped")
+        shutil.rmtree(self.state_directory)
+
+    @property
+    def lab(self) -> "Lab":
         """The `lab` is the top most layer."""
         if self.parent is None:
             return self
         return self.parent.lab
 
+    def start(self):
+        try:
+            os.mkdir(self.state_directory)
+        except FileExistsError:
+            pass
+
+    def started(self):
+        """Signal all of the children of this layer that the layer has started."""
+        self._emit("started")
+
     @property
-    def directory(self):
+    def state_directory(self):
         """Get the layer's directory.
         
         Each layer is assigned an ephemeral directory, this property will
@@ -54,34 +180,27 @@ class Layer(ABC):
         """
         if self.parent is None:
             return os.path.join(os.path.abspath(os.getcwd()), self.name)
-        return os.path.join(self.parent.directory, self.name)
-
-    def created(self):
-        """Create this layer's directory and then signal."""
-        try:
-            os.mkdir(self.directory)
-        except FileExistsError:
-            pass
-        self._emit("created")
-
-    def started(self):
-        """Signal all of the children of this layer that the layer has started."""
-        self._emit("started")
+        return os.path.join(self.parent.state_directory, self.name)
 
     def stopped(self):
         """Signal all of the children of this layer that the layer has stopped."""
         self._emit("stopped")
 
-    def destroyed(self):
-        """Signal all of the children of this layer that the layer has been destroyed."""
-        self._emit("stopped")
-        shutil.rmtree(self.directory)
+class Layer(Definition):
+    dependencies: dict[str, "Dependency"]
+    binds: dict[str, str]
+    ports: dict[str, str]
+    environment: dict[str, str]
+    shared_environment: dict[str, str]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for node_name, node_binds in self.binds.items():
+            self.binds[node_name] = self._resolve_binds(node_binds)
 
 class Service(Layer):
     """A Service is a collection of related nodes."""
 
-    name: str
-    lab: "Lab"
     nodes: dict[str, "Node"]
 
     @property
@@ -89,16 +208,16 @@ class Service(Layer):
         return self.nodes.values()
 
     def created(self):
+        nodes = self.nodes
         self.nodes = {}
-        nodes = resolve_attribute(self.__class__, "nodes", {})
         for node_name, node in nodes.items():
             extra_kwargs = {}
-            for varname in ["dependencies", "binds", "ports"]:
-                extra_kwargs[varname] = getattr(self, varname).get(node_name, None)
+            for varname in ["dependencies", "binds", "ports", "environment"]:
+                extra_kwargs[varname] = getattr(self, varname, {}).get(node_name, None)
 
             self.nodes[node_name] = node(
                 name=node_name,
-                service=self,
+                parent=self,
                 **extra_kwargs,
             )
         super().created()
@@ -106,18 +225,13 @@ class Service(Layer):
     def resolve_environment(self, environment):
         """Format any templat strings contained in the given environment."""
         service_environment = {
-            **getattr(self, "environment", {}),
+            **getattr(self, "shared_environment", {}),
             **environment,
         }
-        for key, value in environment.items():
+        for key, value in service_environment.items():
             if isinstance(value, str):
-                environment[key] = value.format(**service_environment)
-        return environment
-
-    @property
-    def default_environment(self):
-        """The default environment is the service class's environment."""
-        return self.resolve_environment(getattr(self, "environment", {}))
+                service_environment[key] = value.format(**service_environment)
+        return service_environment
 
 
 class Lab(Layer):
@@ -126,7 +240,7 @@ class Lab(Layer):
     services: dict[str, Service]
 
     def __init__(self):
-        super().__init__(name=self.__class__.name)
+        super().__init__(self.__class__.name)
         self.services = {}
 
         for service_name, service_class in getattr(self.__class__, "services", {}).items():
@@ -160,12 +274,13 @@ class Lab(Layer):
             *cmd,
         ]
         env = {
-            "CLAB_LABDIR_BASE": self.directory,
+            "CLAB_LABDIR_BASE": self.state_directory,
         }
         return self._run_cmd(cmd, cmd_input=cmd_input, env=env)
 
     def start(self):
         """Start the current lab."""
+        super().start()
         cmd = ["deploy", "--topo", self.topology_file]
         reconfigure = self.needs_reconfigure
         if reconfigure:
@@ -208,7 +323,7 @@ class Lab(Layer):
     @property
     def topology_file(self):
         """Get the path to the lab's topology file."""
-        return os.path.join(self.directory, f"{self.name.lower()}.json")
+        return os.path.join(self.state_directory, f"{self.name.lower()}.json")
 
     @property
     def running(self):

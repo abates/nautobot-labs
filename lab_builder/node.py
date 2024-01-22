@@ -3,14 +3,9 @@ import os
 import shutil
 from typing import TypedDict
 from dataclasses import dataclass
-import typing
+from lab_builder.lab import Definition
 
-from lab_builder.util import resolve_attribute, resolve_binds
-
-if typing.TYPE_CHECKING:
-    from lab import Service
-
-class ConfigObject:
+class ConfigObjectMixin:
     def update_dict(self, values: dict, attr, key = None, check = lambda value: value):
         if key is None:
             key = attr
@@ -34,8 +29,8 @@ HealthCheckConfig = TypedDict(
 
 
 @dataclass
-class HealthCheck(ConfigObject):
-    test: list[str]
+class HealthCheck(ConfigObjectMixin):
+    test: list[str] = None
     start_period: int = 0
     retries: int = 3
     interval: int = 30
@@ -84,32 +79,31 @@ NodeConfig = TypedDict(
 )
 
 
-class Node(ConfigObject):
-    service: "Service"
-    name: str = None
+class Node(Definition, ConfigObjectMixin):
     kind: str = None
     network_mode: str = "bridge"
     health_check: HealthCheck = None
     command: str = None
-    dependencies: dict[str, str]
     networks: list[str]
+    environment: dict[str, str]
+
+    # These attributes are re-defined here because in `Layer` they
+    # are dictionaries of `node_name`/definitions, but in the `Node`
+    # itself, they are just the definition.
+    dependencies: list[Dependency]
     binds: list[str]
     ports: list[str]
 
     def __init__(
             self,
             name: str,
-            service,
-            dependencies: list[Dependency] = None,
-            binds: list[str] = None,
-            ports: list[str] = None,
+            parent: Definition,
+            health_check: HealthCheck = None,
+            **kwargs
         ):
-        self.name = name
-        self.service = service
-        self.dependencies = resolve_attribute(self.__class__, "dependencies", dependencies or [])
-        self.ports = resolve_attribute(self.__class__, "ports", ports or [])
-        self.binds = resolve_attribute(self.__class__, "binds", binds or [])
-        self.binds = resolve_binds(self, self.binds)
+        self.health_check = health_check
+        super().__init__(name, parent, **kwargs)
+        self.binds = self._resolve_binds(self.binds)
 
     def as_dict(self) -> NodeConfig:
         values = {}
@@ -131,35 +125,26 @@ class Node(ConfigObject):
         self.update_dict(values, "command", "cmd")
         self.update_dict(values, "binds", "binds")
         self.update_dict(values, "ports", "ports")
-        if getattr(self, "environment", None):
-            values["env"] = self.service.resolve_environment(self.environment)
-        else:
-            values["env"] = self.service.default_environment
+        env = getattr(self, "environment", {})
+        values["env"] = self.parent.resolve_environment(env)
         return values
 
-    @property
-    def directory(self):
-        return os.path.join(self.service.directory, self.name)
-
-    def created(self):
-        try:
-            os.mkdir(self.directory)
-        except FileExistsError:
-            pass
+    def start(self):
+        super().start()
         for bind in self.binds:
             local, _ = bind.split(":", 1)
-            if local.startswith(self.directory):
+            if local.startswith(self.state_directory):
                 try:
                     os.makedirs(local)
                 except FileExistsError:
                     pass
-        self.binds.append(f"{self.directory}:/lab_builder_data")
 
-    def started(self):
-        pass
+    def created(self):
+        super().created()
+        self.binds.append(f"{self.state_directory}:/lab_builder_data")
 
-    def stopped(self):
-        shutil.rmtree(self.directory)
+    def destroyed(self):
+        shutil.rmtree(self.state_directory)
 
     def run_cmd(self, cmd):
         cmd = [
@@ -168,7 +153,7 @@ class Node(ConfigObject):
             "--cmd", " ".join(cmd),
         ]
 
-        self.service.lab.run_clab_cmd(cmd)
+        self.lab.run_clab_cmd(cmd)
 
 class LinuxNode(Node):
     kind = "linux"

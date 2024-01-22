@@ -2,9 +2,33 @@ import os
 import ldap
 from django_auth_ldap.config import LDAPSearch,GroupOfNamesType
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "nautobot_ldap_formatter": {
+            "format": "%(asctime)s.%(msecs)03d %(levelname)-7s %(name)-20s %(filename)-15s %(funcName)30s() :\n  %(message)s",
+            "datefmt": "%H:%M:%S",
+        },
+    },
+    "handlers": {
+        "nautobot_ldap_handler": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "nautobot_ldap_formatter",
+        }
+    },
+    "loggers": {
+        "django_auth_ldap": {
+            "handlers": ["nautobot_ldap_handler"],
+            "level": "DEBUG",
+        },
+    },
+}
+
 AUTHENTICATION_BACKENDS = [
-    'django_auth_ldap.backend.LDAPBackend',
-    'nautobot.core.authentication.ObjectPermissionBackend',
+    "django_auth_ldap.backend.LDAPBackend",
+    "nautobot.core.authentication.ObjectPermissionBackend",
 ]
 
 # Server URI

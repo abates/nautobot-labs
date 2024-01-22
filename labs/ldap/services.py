@@ -7,17 +7,18 @@ class LDAPServer(LinuxNode):
     binds = [
         "./bin/*:/usr/local/bin"
     ]
-    environment = {
-        "LDAP_ADMIN_USERNAME": "admin",
-        "LDAP_ADMIN_PASSWORD": "adminpassword",
-        "BIND_DN": "cn={LDAP_ADMIN_USERNAME},dc=example,dc=org",
-        "BIND_PASSWORD": "{LDAP_ADMIN_PASSWORD}",
-        "SEARCH_BASE": "dc=example,dc=org",
-    }
 
 
 class NautobotWithLDAPService(NautobotService):
     nodes = {
         "ldap": LDAPServer,
+    }
+
+    shared_environment = {
+        "LDAP_ADMIN_USERNAME": "admin",
+        "LDAP_ADMIN_PASSWORD": "adminpassword",
+        "BIND_DN": "cn={LDAP_ADMIN_USERNAME},dc=example,dc=org",
+        "BIND_PASSWORD": "{LDAP_ADMIN_PASSWORD}",
+        "SEARCH_BASE": "dc=example,dc=org",
     }
     extra_nautobot_config = "nautobot_config.py.j2"

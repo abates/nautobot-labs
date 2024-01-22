@@ -1,6 +1,7 @@
 # hidden files
 .*
 !.gitignore
+!.vscode
 
 # Ansible Retry Files
 *.retry
