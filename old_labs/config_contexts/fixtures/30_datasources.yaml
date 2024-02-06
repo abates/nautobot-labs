@@ -1,9 +1,0 @@
-- model: extras.gitrepository
-  pk: 888d8a87-8505-4b72-9109-5f5c5de88cc8
-  fields:
-    name: Config Contexts
-    slug: config-contexts
-    remote_url: http://git-server.local:3000/config-contexts.git
-    branch: main
-    provided_contents:
-    - extras.configcontext

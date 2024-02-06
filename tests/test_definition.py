@@ -124,6 +124,7 @@ def test_name():
 def test_node_directory():
     class TestNode(Node):
         name = "node"
+        image = "hello-world"
 
     class TestService(Service):
         name = "TestService"

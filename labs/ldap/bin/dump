@@ -1,7 +1,0 @@
-#!/bin/bash
-
-ldapsearch \
-  -H ldap://localhost:1389 \
-  -D "${BIND_DN}" \
-  -w "${BIND_PASSWORD}" \
-  -b "${SEARCH_BASE}"
