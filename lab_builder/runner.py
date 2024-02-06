@@ -2,7 +2,8 @@ import cmd
 import importlib
 import os
 from pprint import pprint
-import sys
+
+import platformdirs
 
 from .lab import Lab
 
@@ -27,7 +28,8 @@ class LabRunner(cmd.Cmd):
         # sys.path.append(os.path.join(os.curdir, ".."))
         # importlib.import_module("labs")
         module = importlib.import_module(lab)
-        self.lab: Lab = module.lab()
+        base_dir = platformdirs.user_data_dir(appname="lab_builder", ensure_exists=True)
+        self.lab: Lab = module.lab(base_dir=base_dir)
         super().__init__()
 
     @property

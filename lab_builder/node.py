@@ -1,9 +1,12 @@
 from enum import Enum
+import json
 import os
+import shlex
 import shutil
 from typing import TypedDict
 from dataclasses import dataclass
 from lab_builder.lab import Definition
+
 
 class ConfigObjectMixin:
     def update_dict(self, values: dict, attr, key = None, check = lambda value: value):
@@ -68,6 +71,7 @@ NodeConfig = TypedDict(
     {
         "kind": str,
         "image": str,
+        "entrypoint": str,
         "healthcheck": HealthCheckConfig,
         "network-mode": str,
         "stages": dict[str, dict[str, str]],
@@ -86,6 +90,7 @@ class Node(Definition, ConfigObjectMixin):
     command: str = None
     networks: list[str]
     environment: dict[str, str]
+    entrypoint: str
 
     # These attributes are re-defined here because in `Layer` they
     # are dictionaries of `node_name`/definitions, but in the `Node`
@@ -109,6 +114,7 @@ class Node(Definition, ConfigObjectMixin):
         values = {}
         self.update_dict(values, "kind")
         self.update_dict(values, "image")
+        self.update_dict(values, "entrypoint")
         self.update_dict(values, "health_check", "healthcheck")
         self.update_dict(values, "network_mode", "network-mode", lambda value: value != "bridge")
         self.update_dict(values, "dependencies", "stages")
@@ -123,8 +129,8 @@ class Node(Definition, ConfigObjectMixin):
                 }
             }
         self.update_dict(values, "command", "cmd")
-        self.update_dict(values, "binds", "binds")
-        self.update_dict(values, "ports", "ports")
+        self.update_dict(values, "binds")
+        self.update_dict(values, "ports")
         env = getattr(self, "environment", {})
         values["env"] = self.parent.resolve_environment(env)
         return values
@@ -142,18 +148,65 @@ class Node(Definition, ConfigObjectMixin):
     def created(self):
         super().created()
         self.binds.append(f"{self.state_directory}:/lab_builder_data")
+        container_file = getattr(self, "containerfile", None)
+        image = getattr(self, "image", None)
+        if container_file is None and image is None:
+            raise ValueError(f"Either containerfile or image must be specified for {self.__class__.__name__}.")
+        if not ((container_file is None) ^ (image is None)):
+            print(container_file, image)
+            raise ValueError(f"Both containerfile and image are set for {self.__class__.__name__}. Choose only one.")
+        
+        if container_file:
+            container_file = os.path.join(self.definition_directory, container_file)
+            self.image = f"lab_builder/{self.__class__.__name__.lower()}:latest"
+            cmd = [
+                "docker",
+                "image",
+                "build",
+                "--tag",
+                self.image,
+                "--file",
+                container_file,
+                os.path.dirname(container_file),
+            ]
+            self.lab.run_cmd(cmd)
 
     def destroyed(self):
         shutil.rmtree(self.state_directory)
 
-    def run_cmd(self, cmd):
+    def run_cmd(self, cmd, working_directory=None):
+        shell_command = shlex.join(cmd)
+        if working_directory:
+            shell_command = " ".join([
+                "sh",
+                "-c",
+                shlex.quote(" ".join(["cd", working_directory, "&&", shell_command])),
+            ])
+
         cmd = [
             "exec",
             "--label", f"clab-node-name={self.name}",
-            "--cmd", " ".join(cmd),
+            "--format", "json",
+            "--cmd", shell_command,
         ]
-
-        self.lab.run_clab_cmd(cmd)
+        process = self.lab.run_clab_cmd(cmd)
+        output = json.loads(process.stdout)
+        output = next(iter(output.values())).pop()
+        if output["return-code"] != 0:
+            print(shell_command)
+            print(output["stderr"])
+        return output
 
 class LinuxNode(Node):
     kind = "linux"
+
+    def list_dir(self, path):
+        output = self.run_cmd(["ls", path])
+        if output["return-code"] == 0:
+            if output["stdout"]:
+                return output["stdout"].split("\n")
+        return []
+
+    def path_exists(self, path):
+        output = self.run_cmd(["ls", path])
+        return output["return-code"] == 0

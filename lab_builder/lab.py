@@ -9,7 +9,7 @@ from types import NoneType
 import typing
 
 if typing.TYPE_CHECKING:
-    from lab_builder.node import Node, Dependency
+    from lab_builder.node import Node, Dependency, Service
 
 
 class Definition:
@@ -17,11 +17,15 @@ class Definition:
             self,
             name: str,
             parent: "Definition" = None,
+            base_dir: str = None,
             **kwargs,
         ):
         self.name = name
         self.parent = parent
         type_hints = {}
+        self.base_dir = base_dir
+        if self.base_dir is None:
+            self.base_dir = os.getcwd()
         for _class in reversed(self.__class__.__mro__):
             type_hints.update(typing.get_type_hints(_class))
 
@@ -166,6 +170,8 @@ class Definition:
             os.mkdir(self.state_directory)
         except FileExistsError:
             pass
+        for child in self.children:
+            child.start()
 
     def started(self):
         """Signal all of the children of this layer that the layer has started."""
@@ -179,7 +185,7 @@ class Definition:
         return the absolute path to the current layer's directory.
         """
         if self.parent is None:
-            return os.path.join(os.path.abspath(os.getcwd()), self.name)
+            return os.path.join(os.path.abspath(self.base_dir), self.name)
         return os.path.join(self.parent.state_directory, self.name)
 
     def stopped(self):
@@ -239,8 +245,8 @@ class Lab(Layer):
     description: str = "A Simple lab with nothing in it."
     services: dict[str, Service]
 
-    def __init__(self):
-        super().__init__(self.__class__.name)
+    def __init__(self, base_dir=None):
+        super().__init__(self.__class__.name, base_dir=base_dir)
         self.services = {}
 
         for service_name, service_class in getattr(self.__class__, "services", {}).items():
@@ -255,7 +261,7 @@ class Lab(Layer):
             self.services[service_name] = service
         self.created()
 
-    def _run_cmd(self, cmd, **process_kwargs):
+    def run_cmd(self, cmd: list[str], **process_kwargs) -> subprocess.CompletedProcess:
         process_kwargs["stdout"] = subprocess.PIPE
         if "cmd_input" in process_kwargs:
             if process_kwargs["cmd_input"] is not None:
@@ -266,7 +272,7 @@ class Lab(Layer):
         return subprocess.run(cmd, check=True, **process_kwargs)
 
 
-    def run_clab_cmd(self, cmd, cmd_input=None):
+    def run_clab_cmd(self, cmd: list[str], cmd_input=None) -> subprocess.CompletedProcess:
         cmd = [
             "sudo",
             "-E",
@@ -276,7 +282,7 @@ class Lab(Layer):
         env = {
             "CLAB_LABDIR_BASE": self.state_directory,
         }
-        return self._run_cmd(cmd, cmd_input=cmd_input, env=env)
+        return self.run_cmd(cmd, cmd_input=cmd_input, env=env)
 
     def start(self):
         """Start the current lab."""
