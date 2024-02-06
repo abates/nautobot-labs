@@ -1,0 +1,10 @@
+---
+version: "3.8"
+
+services:
+  nautobot:
+    volumes:
+      - "./config_contexts:/opt/nautobot/labs/config_contexts"
+  git_server:
+    volumes:
+      - "./config_contexts/config-contexts:/repos/config-contexts"

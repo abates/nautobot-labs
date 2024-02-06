@@ -1,0 +1,54 @@
+---
+- model: dcim.locationtype
+  fields:
+    name: Region
+    nestable: true
+- model: dcim.locationtype
+  fields:
+    parent:
+    - Region
+    nestable: false
+    name: Site
+    content_types:
+    - - circuits
+      - circuittermination
+    - - dcim
+      - device
+    - - dcim
+      - powerpanel
+    - - dcim
+      - rack
+    - - dcim
+      - rackgroup
+    - - ipam
+      - prefix
+    - - ipam
+      - vlan
+    - - ipam
+      - vlangroup
+    - - virtualization
+      - cluster
+- model: tenancy.tenant
+  fields:
+    name: Tenant 2
+- model: tenancy.tenant
+  fields:
+    name: Tenant 1
+- model: dcim.location
+  fields:
+    name: Site 1
+    location_type:
+    - Site
+    status:
+    - Active
+    tenant:
+    - Tenant 1
+- model: dcim.location
+  fields:
+    name: Site 2
+    location_type:
+    - Site
+    status:
+    - Active
+    tenant:
+    - Tenant 2

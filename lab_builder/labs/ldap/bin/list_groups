@@ -1,0 +1,13 @@
+#!/bin/bash
+
+ldapsearch \
+  -H ldap://localhost:1389 \
+  -D "${BIND_DN}" \
+  -w "${BIND_PASSWORD}" \
+  -LLL \
+  -b "${SEARCH_BASE}" \
+  -s sub \
+  "objectClass=groupOfNames"  \
+  "member"
+  #cn \
+  #| grep -p "^cn:" | awk -F": " '{print $2}' | paste -s -d, -

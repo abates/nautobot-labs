@@ -1,0 +1,10 @@
+---
+version: "3.8"
+
+services:
+  git_server:
+    image: "ghcr.io/abates/git-server:latest"
+    networks:
+      default:
+        aliases:
+          - git-server.local

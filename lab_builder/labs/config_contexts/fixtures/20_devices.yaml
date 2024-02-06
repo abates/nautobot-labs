@@ -1,0 +1,117 @@
+# All the fixture data for devices. This includes manufacturer, 
+# device type, device role, and the devices themselves
+
+# Manufacturers
+- model: dcim.manufacturer
+  pk: dd513a53-3dc0-4d15-8a5d-18c4ab17527d
+  fields:
+    name: Arista
+- model: dcim.platform
+  pk: 2e40a314-9cb5-4f97-8cae-131579f5e800
+  fields:
+    name: EOS
+    manufacturer: dd513a53-3dc0-4d15-8a5d-18c4ab17527d
+
+# Device Types
+- model: dcim.devicetype
+  pk: 99bd63af-cf21-448f-b832-0ba31117d808
+  fields:
+    manufacturer: dd513a53-3dc0-4d15-8a5d-18c4ab17527d
+    model: DCS-7060PX4-32
+    part_number: DCS-7060PX4-32
+- model: dcim.devicetype
+  pk: 4ba97e43-d741-49e9-b391-2c9bb49ae464
+  fields:
+    manufacturer: dd513a53-3dc0-4d15-8a5d-18c4ab17527d
+    model: DCS-7050CX3-32S
+    part_number: DCS-7050CX3-32S
+- model: dcim.devicetype
+  pk: 484a01d6-915e-4187-a0a5-bf03c67f3c42
+  fields:
+    manufacturer: dd513a53-3dc0-4d15-8a5d-18c4ab17527d
+    model: DCS-7280CR3-32P4
+    part_number: DCS-7280CR3-32P4
+- model: dcim.devicetype
+  pk: 6430baf7-cac4-4312-bff9-57d2b0718ee7
+  fields:
+    manufacturer: dd513a53-3dc0-4d15-8a5d-18c4ab17527d
+    model: DCS-7050SX3-48CY8
+    part_number: DCS-7050SX3-48CY8
+
+# Device Role
+- model: extras.role
+  fields:
+    name: evpn-spine
+    color: 673ab7
+    content_types:
+    - - dcim
+      - device
+- model: extras.role
+  fields:
+    name: evpn-leaf
+    color: 9c27b0
+    content_types:
+    - - dcim
+      - device
+
+# Devices
+- model: dcim.device
+  pk: 0147eb79-ba42-423a-b23a-d5bbd0e8e358
+  fields:
+    status: ["Active"]
+    device_type: 99bd63af-cf21-448f-b832-0ba31117d808
+    role:
+    - evpn-spine
+    name: device1
+    location:
+    - Site 1
+- model: dcim.device
+  pk: c0e5b690-44dc-43ab-988e-36c5a2051514
+  fields:
+    status: ["Active"]
+    device_type: 99bd63af-cf21-448f-b832-0ba31117d808
+    role:
+    - evpn-spine
+    name: device2
+    location:
+    - Site 2
+- model: dcim.device
+  pk: f7d58e67-19aa-42d6-9248-c3b6e06a3321
+  fields:
+    status: ["Active"]
+    device_type: 99bd63af-cf21-448f-b832-0ba31117d808
+    role:
+    - evpn-spine
+    name: device3
+    location:
+    - Site 1
+- model: dcim.device
+  pk: 91a1da3b-b8a9-4dbb-9b63-47c026c41bf8
+  fields:
+    status: ["Active"]
+    device_type: 99bd63af-cf21-448f-b832-0ba31117d808
+    role:
+    - evpn-spine
+    name: device4
+    location:
+    - Site 2
+- model: dcim.device
+  pk: 80e2c75d-97b2-495a-bd3e-3d322db6ee0d
+  fields:
+    status: ["Active"]
+    device_type: 99bd63af-cf21-448f-b832-0ba31117d808
+    role:
+    - evpn-leaf
+    name: device5
+    location:
+    - Site 1
+- model: dcim.device
+  pk: e023b7f4-e3a4-4c04-a5c5-082c108bf9fe
+  fields:
+    status: ["Active"]
+    device_type: 99bd63af-cf21-448f-b832-0ba31117d808
+    role:
+    - evpn-leaf
+    name: device6
+    location:
+    - Site 2
