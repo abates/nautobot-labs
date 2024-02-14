@@ -8,6 +8,10 @@ from dataclasses import dataclass
 from lab_builder.lab import Definition
 
 
+def command(method):
+    """Decorator to indicate a method should be a command."""
+    return method
+
 class ConfigObjectMixin:
     def update_dict(self, values: dict, attr, key = None, check = lambda value: value):
         if key is None:
@@ -98,6 +102,7 @@ class Node(Definition, ConfigObjectMixin):
     dependencies: list[Dependency]
     binds: list[str]
     ports: list[str]
+    links: dict[str, str]
 
     def __init__(
             self,
@@ -174,7 +179,7 @@ class Node(Definition, ConfigObjectMixin):
     def destroyed(self):
         shutil.rmtree(self.state_directory)
 
-    def run_cmd(self, cmd, working_directory=None):
+    def run_cmd(self, cmd, working_directory=None, interactive=False):
         shell_command = shlex.join(cmd)
         if working_directory:
             shell_command = " ".join([
@@ -187,8 +192,13 @@ class Node(Definition, ConfigObjectMixin):
             "exec",
             "--label", f"clab-node-name={self.name}",
             "--format", "json",
-            "--cmd", shell_command,
         ]
+
+        if interactive:
+            cmd.append("-it")
+        
+        cmd.extend(["--cmd", shell_command])
+
         process = self.lab.run_clab_cmd(cmd)
         output = json.loads(process.stdout)
         output = next(iter(output.values())).pop()
@@ -197,10 +207,22 @@ class Node(Definition, ConfigObjectMixin):
             print(output["stderr"])
         return output
 
+class NetworkNode(Node):
+    """A containerlab network device node."""
+
 class LinuxNode(Node):
+    """A container lab linux node."""
     kind = "linux"
 
     def list_dir(self, path):
+        """Retrieve the contents of a path within a node.
+
+        Args:
+            path (str): The directory path to list
+
+        Returns:
+            list[str]: The contents of the node's directory
+        """
         output = self.run_cmd(["ls", path])
         if output["return-code"] == 0:
             if output["stdout"]:
@@ -208,5 +230,13 @@ class LinuxNode(Node):
         return []
 
     def path_exists(self, path):
+        """Determine if a path exists on the node.
+
+        Args:
+            path (str): Path to check
+
+        Returns:
+            bool: True if the path exists, otherwise False
+        """
         output = self.run_cmd(["ls", path])
         return output["return-code"] == 0

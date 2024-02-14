@@ -1,4 +1,4 @@
-
+"""This module provides the basic framework for lab definitions."""
 import glob
 import inspect
 import json
@@ -8,11 +8,15 @@ import subprocess
 from types import NoneType
 import typing
 
+import cmd2
+
 if typing.TYPE_CHECKING:
     from lab_builder.node import Node, Dependency, Service
 
 
 class Definition:
+    """Definition is a top-level lab configuration/definition class."""
+
     def __init__(
             self,
             name: str,
@@ -20,6 +24,17 @@ class Definition:
             base_dir: str = None,
             **kwargs,
         ):
+        """Initialize a definition.
+
+        Args:
+            name (str): Name of the definition. This could be a lab name, service name
+                        or node name.
+            parent (Definition, optional): The parent definition to which this belongs.
+            base_dir (str, optional): The base directory to use for storing state. Defaults to None.
+
+        Raises:
+            TypeError: Raise if an unknown keyword argument has been provided.
+        """
         self.name = name
         self.parent = parent
         type_hints = {}
@@ -62,6 +77,7 @@ class Definition:
 
             * named - A bind that is neither relative nor absolute is considered "named". The
             named bind will be rooted in the layer's state directory and will be read-write.
+
         Args:
             layer (Layer): The layer where the binds need to be calculated
             binds (list[str]): The list of volume binds (in `local:remote` format)
@@ -136,13 +152,40 @@ class Definition:
             setattr(self, attr_name, value)
 
     def _emit(self, signal):
-        for child in self.children:
+        for child in self.children.values():
             getattr(child, signal)()
 
     @property
-    def children(self):
+    def children(self) -> dict[str, typing.Any]:
         """Get the children of this layer."""
-        return []
+        return {}
+
+    @property
+    def commands(self):
+        """Get a list of commands that the definition provides.
+        
+        Any method starting with `do_` is considered a command that is
+        provided to the lab CLI for user interaction. This method
+        finds those methods and returns their names. This is mostly used
+        for tab-completion.
+        """
+        members = []
+        for name, member in inspect.getmembers(self.__class__):
+            if name.startswith("do_") and inspect.ismethod(getattr(self, name)):
+                members.append(name.removeprefix("do_"))
+        return members
+
+    def complete(self, commands: list[str], command: str, text: str):
+        if len(commands) > 0:
+            if hasattr(self, f"do_{commands[0]}"):
+                if hasattr(self, f"complete_{commands[0]}"):
+                    return getattr(self, f"complete_{commands[0]}")(commands[1:], command, text)
+                return []
+            if commands[0] in self.children:
+                return self.children[commands[0]].complete(commands[1:], command, text)
+        children = [child for child in self.children.keys()]
+        # print(self, "POSSIBLE: ", [*self.commands, *children])
+        return [text + match[len(command):] for match in [*self.commands, *children] if match.startswith(command)]
 
     def created(self):
         """Create this layer's directory and then signal."""
@@ -170,7 +213,7 @@ class Definition:
             os.mkdir(self.state_directory)
         except FileExistsError:
             pass
-        for child in self.children:
+        for child in self.children.values():
             child.start()
 
     def started(self):
@@ -194,10 +237,13 @@ class Definition:
 
 class Layer(Definition):
     dependencies: dict[str, "Dependency"]
+    # TODO: Convert the value to a formal class/model
     binds: dict[str, str]
     ports: dict[str, str]
     environment: dict[str, str]
     shared_environment: dict[str, str]
+    # TODO: Convert this to a formal class/model
+    links: dict[str, dict[str, str]]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -210,15 +256,15 @@ class Service(Layer):
     nodes: dict[str, "Node"]
 
     @property
-    def children(self):
-        return self.nodes.values()
+    def children(self) -> dict[str, "Node"]:
+        return self.nodes
 
     def created(self):
         nodes = self.nodes
         self.nodes = {}
         for node_name, node in nodes.items():
             extra_kwargs = {}
-            for varname in ["dependencies", "binds", "ports", "environment"]:
+            for varname in ["dependencies", "binds", "ports", "environment", "links"]:
                 extra_kwargs[varname] = getattr(self, varname, {}).get(node_name, None)
 
             self.nodes[node_name] = node(
@@ -252,16 +298,27 @@ class Lab(Layer):
         for service_name, service_class in getattr(self.__class__, "services", {}).items():
             dependencies = getattr(self, "dependencies", None)
             binds = getattr(self.__class__, "binds", None)
+            links = getattr(self.__class__, "links", None)
             service = service_class(
                 name=service_name,
                 parent=self,
                 dependencies=dependencies,
                 binds=binds,
+                links=links,
             )
             self.services[service_name] = service
         self.created()
 
     def run_cmd(self, cmd: list[str], **process_kwargs) -> subprocess.CompletedProcess:
+        """Run a command using `subprocess.run`.
+
+        Args:
+            cmd (list[str]): The command to run. The command itself should be the first item
+                in the list, and the command's arguments should be the remaining items.
+
+        Returns:
+            subprocess.CompletedProcess: The result of the command's execution.
+        """
         process_kwargs["stdout"] = subprocess.PIPE
         if "cmd_input" in process_kwargs:
             if process_kwargs["cmd_input"] is not None:
@@ -273,6 +330,20 @@ class Lab(Layer):
 
 
     def run_clab_cmd(self, cmd: list[str], cmd_input=None) -> subprocess.CompletedProcess:
+        """Run a containerlab sub-command.
+
+        This method will execute `sudo -E containerlab ...` with the given command
+        argumnets.
+
+        Args:
+            cmd (list[str]): The command (first item) and its arguments to provide to
+                to the `containerlab` executable.
+            cmd_input (str, optional): Any input to provide to the processes `stdin.
+                Defaults to None.
+
+        Returns:
+            subprocess.CompletedProcess: The result of the command/process completion.
+        """
         cmd = [
             "sudo",
             "-E",
@@ -296,8 +367,12 @@ class Lab(Layer):
             with open(self.topology_file, "w", encoding="utf-8") as file:
                 file.write(self.topology_str)
 
-        self.run_clab_cmd(cmd)
-        self.started()
+        if reconfigure or not self.running:
+            print("Starting", self.lab.name)
+            self.run_clab_cmd(cmd)
+            self.started()
+        else:
+            print(self.lab.name, "is already running")
 
     def stop(self):
         """If running, stop the current lab."""
@@ -333,8 +408,12 @@ class Lab(Layer):
 
     @property
     def running(self):
-        """Determine if any part of this lab is currently running."""
-        return len(self.running_containers) > 0
+        """Determine if all of the nodes of this lab are running."""
+        running_containers = set(self.running_containers)
+        for node in self.nodes:
+            if node.name not in running_containers:
+                return False
+        return True
 
     @property
     def running_containers(self):
@@ -342,7 +421,7 @@ class Lab(Layer):
         containers = []
         for container in self.inspect().get("containers", []):
             # remove clab- and lab name
-            name = container["name"][5+len(container["lab_name"]):]
+            name = container["name"][6+len(container["lab_name"]):]
             containers.append(name)
         return containers
 
@@ -352,20 +431,24 @@ class Lab(Layer):
         if os.path.exists(self.topology_file):
             with open(self.topology_file, encoding="utf-8") as topology_file:
                 existing_topology = topology_file.read()
-                if existing_topology == self.topology_str:
+                if existing_topology != self.topology_str:
                     return True
-                running_containers = set(self.running_containers)
-                for node in self.nodes:
-                    if node.name not in running_containers:
-                        return True
         return False
 
     @property
-    def children(self):
-        return self.services.values()
+    def children(self) -> dict[str, typing.Any]:
+        return self.services
 
     @property
     def nodes(self):
+        """Retrieve all of the nodes in the lab.
+
+        The `nodes` property is a generator that yields
+        nodes from the combined services of the lab.
+
+        Yields:
+            Node: Nodes belonging to services in the lab.
+        """
         for service in self.services.values():
             yield from service.nodes.values()
 
@@ -378,6 +461,11 @@ class Lab(Layer):
     def topology(self):
         """Generate the containerlab topology for this lab."""
         links = []
+        for node in self.nodes:
+            for interface_name, connection in node.links.items():
+                links.append({
+                    "endpoints": [f"{node.name}:{interface_name}", connection],
+                })
 
         return {
             "name": self.name,

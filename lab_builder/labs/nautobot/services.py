@@ -3,7 +3,7 @@ import os
 
 from jinja2 import Environment, FileSystemLoader
 
-from lab_builder import Service
+from lab_builder.lab import Service
 from lab_builder.labs.common import DB, Redis
 from lab_builder.node import Dependency, DependencyState, HealthCheck, LinuxNode
 

@@ -1,6 +1,5 @@
-import cmd
+import cmd2
 import importlib
-import os
 from pprint import pprint
 
 import platformdirs
@@ -18,7 +17,7 @@ def check_running(func):
     return decorator
 
 
-class LabRunner(cmd.Cmd):
+class LabRunner(cmd2.Cmd):
     lab: Lab
     intro = "Welcome to the lab builder.  Type help or ? to list commands.\n"
     file = None
@@ -39,7 +38,6 @@ class LabRunner(cmd.Cmd):
 
     def do_start(self, _):
         """Run the `start` command."""
-        print("Starting", self.lab.name)
         self.lab.start()
 
     def do_inspect(self, _):
@@ -58,6 +56,26 @@ class LabRunner(cmd.Cmd):
         print()
         return True
 
-    def do_EOF(self, arg):
-        """Stop the command line."""
-        return self.do_exit(arg)
+    def do_run(self, args):
+        # args = args.split()
+        # try:
+        #     service = self.lab.services[args[0]]
+        # except
+        print("RUNNING:", args)
+    
+    def complete_run(self, text: str, line: str, begidx: int, endidx: int):
+        # The command that is being auto-completed
+        command = line[begidx:endidx]
+
+        # remove the `run` portion of the line
+        line = line[3:]
+
+        # tokenize the line by spaces
+        commands = line.split()
+
+        # if we're autocompleting the last part of the line
+        # then the command itself is not the text portion,
+        # it is instead the last token
+        if line and not line[-1].isspace():
+            command = commands.pop()
+        return self.lab.complete(commands, command, text)

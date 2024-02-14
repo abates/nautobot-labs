@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""This is the main entrypoint for running `lab_builder` labs."""
 import sys
 
 from .runner import LabRunner

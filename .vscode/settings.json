@@ -1,10 +1,6 @@
 {
     "python.testing.pytestArgs": [
-        "--cov-report",
-        "xml:coverage.xml",
-        "--cov",
-        "lab_builder",
-        "tests/"
+        "tests"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true

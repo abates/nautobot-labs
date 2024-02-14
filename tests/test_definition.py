@@ -1,7 +1,10 @@
 
+import json
 import os
+import tempfile
 from unittest.mock import Mock, PropertyMock, patch
 import pytest
+
 from lab_builder.lab import Definition, Lab, Service
 from lab_builder.node import Node
 
@@ -118,26 +121,58 @@ def test_resolve_binds(test_case):
         assert test_case["expected"] == received
 
 def test_name():
+    """Test the name property of a definiton."""
     d = Definition(name="My definition")
     assert d.name == "My definition"
 
+class TestNode(Node):
+    """A simple node class for testing."""
+    name = "node"
+    image = "hello-world"
+
+class TestService(Service):
+    """A simple service class for testing."""
+    name = "TestService"
+    nodes = {
+        "test_node": TestNode,
+    }
+
+class TestServiceWithLinks(Service):
+    """A simple service class (with node links) for testing."""
+    name = "TestService"
+    nodes = {
+        "test_node1": TestNode,
+        "test_node2": TestNode,
+        "test_node3": TestNode,
+    }
+
+    links = {
+        "test_node1": {
+            "eth2": "test_node2:eth2",
+            "eth3": "test_node3:eth2",
+        },
+        "test_node2": {
+            "eth3": "test_node3:eth3",
+        }
+    }
+
+class TestLab(Lab):
+    """A simple lab class for testing."""
+    name = "TestLab"
+    services = {
+        "test_service": TestService,
+    }
+
+
+class TestLabWithLinks(Lab):
+    """A simple lab class (with links) for testing."""
+    name = "TestLab"
+    services = {
+        "test_service": TestServiceWithLinks,
+    }
+
 def test_node_directory():
-    class TestNode(Node):
-        name = "node"
-        image = "hello-world"
-
-    class TestService(Service):
-        name = "TestService"
-        nodes = {
-            "test_node": TestNode,
-        }
-
-    class TestLab(Lab):
-        name = "TestLab"
-        services = {
-            "test_service": TestService,
-        }
-
+    """Confirm that the state and definition directories are the expected paths."""
     lab = TestLab()
     base_dir = os.path.dirname(__file__)
     state_dir = os.path.join(os.getcwd(), "TestLab")
@@ -151,3 +186,53 @@ def test_node_directory():
     state_dir = os.path.join(state_dir, "test_node")
     assert lab.services["test_service"].nodes["test_node"].state_directory == state_dir
     assert lab.services["test_service"].nodes["test_node"].definition_directory == base_dir
+
+def test_running():
+    """The `running` property determines if the complete lab is running.
+    
+    This test confirms the behavior of the `running` property.
+    """
+    with (
+        patch("lab_builder.lab.Lab.inspect", new_callable=Mock) as inspect,
+    ):
+        lab = TestLab()
+        inspect.return_value = {"containers": []}
+        assert lab.running is False
+
+        inspect.return_value = {"containers": [
+            {"lab_name": "TestLab", "name": "clab-TestLab-test_node"},
+        ]}
+        assert lab.running is True
+
+def test_needs_reconfigure():
+    """This test confirms the behavior of the `needs_reconfigure` property.
+
+    Labs that may already be running should only be restarted if their topology,
+    or other configuration has changed. The `needs_reconfigure` property attempts
+    to determine if a reconfiguration is necessary. This test confirms that
+    behavior.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        lab = TestLab(base_dir=tmp_dir)
+        assert lab.needs_reconfigure is False
+        os.makedirs(lab.state_directory)
+        with open(lab.topology_file, "w") as topology_file:
+            json.dump({}, topology_file)
+
+        assert lab.needs_reconfigure is True
+
+        with open(lab.topology_file, "w") as topology_file:
+            topology_file.write(lab.topology_str)
+
+        assert lab.needs_reconfigure is False
+
+def test_links():
+    """Confirm the behavior of the link computation."""
+    lab = TestLabWithLinks()
+    expected_links = [
+        {"endpoints": ["test_node1:eth2", "test_node2:eth2"]},
+        {"endpoints": ["test_node1:eth3", "test_node3:eth2"]},
+        {"endpoints": ["test_node2:eth3", "test_node3:eth3"]},
+    ]
+
+    assert expected_links == lab.topology["topology"]["links"]

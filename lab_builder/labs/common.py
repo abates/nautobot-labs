@@ -1,7 +1,18 @@
-import os
-import shutil
-from lab_builder.node import HealthCheck, LinuxNode
+from lab_builder.node import HealthCheck, LinuxNode, NetworkNode
 
+
+class CEOS(NetworkNode):
+    """Arista Containerized EOS node."""
+    kind = "ceos"
+    image = "ceos:4.28.9M"
+
+    def do_cli(self):
+        """Start a cEOS interactive CLI."""
+        self.run_cmd("Cli", interactive="True")
+
+    def do_shell(self):
+        """Start a shell in the cEOS node."""
+        self.run_cmd("/bin/bash", interactive="True")
 
 class DB(LinuxNode):
     """PostgreSQL database node."""
