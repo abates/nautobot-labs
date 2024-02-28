@@ -13,6 +13,24 @@ import cmd2
 if typing.TYPE_CHECKING:
     from lab_builder.node import Node, Dependency, Service
 
+def deep_merge(lhs, rhs):
+    if type(lhs) != type(rhs):
+        raise ValueError(f"Mismatch type {type(lhs)} != {type(rhs)}")
+
+    if hasattr(lhs, "items"):
+        merged = set()
+        for key, val in lhs.items():
+            if key in rhs:
+                if hasattr(val, "items") or hasattr(val, "extend"):
+                    deep_merge(val, rhs[key])
+                else:
+                    lhs[key] = rhs[key]
+                merged.add(key)
+        for key, val in rhs.items():
+            if key not in merged:
+                lhs[key] = val
+    elif hasattr(lhs, "extend"):
+        lhs.extend(rhs)
 
 class Definition:
     """Definition is a top-level lab configuration/definition class."""
@@ -46,19 +64,16 @@ class Definition:
 
         for attr_name, type_hint in type_hints.items():
             attr_value = kwargs.pop(attr_name, None)
-            if (
-                getattr(self, attr_name, None) is None
-                or getattr(self, attr_name) is getattr(self.__class__, attr_name, None)
-            ):
-                setattr(self, attr_name, type_hint())
+            setattr(self, attr_name, type_hint())
             
-            self._update_attribute(attr_name, attr_value)
+            if attr_value:
+                self._update_attribute(attr_name, attr_value)
 
             # Reverse the MRO so that we always start
             # from the top most level first. This allows
             # Layers that extend a layer to do overrides
             for _class in reversed(self.__class__.__mro__):
-                if hasattr(_class, attr_name):
+                if hasattr(_class, attr_name) and getattr(_class, attr_name) is not getattr(self, attr_name):
                     self._update_attribute(attr_name, getattr(_class, attr_name))
         keys = list(kwargs.keys())
 
@@ -108,6 +123,7 @@ class Definition:
                         # directory hasn't been created yet, so just add it
                         # and let later handlers create the directory
                         resolved_binds.append(f"{local}:{remote}")
+                        continue
                 elif not local.startswith(self.state_directory):
                     read_only = ":ro"
                 
@@ -144,8 +160,20 @@ class Definition:
         if type(self_value) != type(value):
             raise ValueError(f"{attr_name}: Mismatch type {type(self_value)} != {type(value)}")
 
-        if hasattr(self_value, "update"):
-            self_value.update(value)
+        if hasattr(self_value, "keys"):
+            updated_keys = set()
+            for key in self_value.keys():
+                if key in value:
+                    if hasattr(self_value[key], "update"):
+                        self_value[key].update(value[key])
+                    elif hasattr(self_value[key], "extend"):
+                        self_value[key].extend(value[key])
+                    else:
+                        self_value[key] = value[key]
+                updated_keys.add(key)
+            for key in value.keys():
+                if key not in updated_keys:
+                    self_value[key] = value[key]
         elif hasattr(self_value, "extend"):
             self_value.extend(value)
         else:
@@ -170,12 +198,31 @@ class Definition:
         for tab-completion.
         """
         members = []
-        for name, member in inspect.getmembers(self.__class__):
+        for name, _ in inspect.getmembers(self.__class__):
             if name.startswith("do_") and inspect.ismethod(getattr(self, name)):
                 members.append(name.removeprefix("do_"))
         return members
 
+    def get_command(self, commands: list[str]):
+        if len(commands) == 0:
+            return None
+        if commands[0] in self.children:
+            return self.children[commands[0]].get_command(commands[1:])
+        if hasattr(self, f"do_{commands[0]}"):
+            return (getattr(self, f"do_{commands[0]}"), commands[1:])
+        raise Exception(f"Unknown command {commands[0]}")
+
     def complete(self, commands: list[str], command: str, text: str):
+        """Perform the tab-completion.
+
+        Args:
+            commands (list[str]): commands split from the command line by spaces.
+            command (str): The trailing command, to be looked up.
+            text (str): The completion text.
+
+        Returns:
+            list[str]: List of possible completions
+        """
         if len(commands) > 0:
             if hasattr(self, f"do_{commands[0]}"):
                 if hasattr(self, f"complete_{commands[0]}"):
@@ -184,7 +231,6 @@ class Definition:
             if commands[0] in self.children:
                 return self.children[commands[0]].complete(commands[1:], command, text)
         children = [child for child in self.children.keys()]
-        # print(self, "POSSIBLE: ", [*self.commands, *children])
         return [text + match[len(command):] for match in [*self.commands, *children] if match.startswith(command)]
 
     def created(self):
@@ -297,14 +343,12 @@ class Lab(Layer):
 
         for service_name, service_class in getattr(self.__class__, "services", {}).items():
             dependencies = getattr(self, "dependencies", None)
-            binds = getattr(self.__class__, "binds", None)
-            links = getattr(self.__class__, "links", None)
             service = service_class(
                 name=service_name,
                 parent=self,
                 dependencies=dependencies,
-                binds=binds,
-                links=links,
+                binds=getattr(self, "binds", None),
+                links=getattr(self, "links", None),
             )
             self.services[service_name] = service
         self.created()
@@ -319,7 +363,7 @@ class Lab(Layer):
         Returns:
             subprocess.CompletedProcess: The result of the command's execution.
         """
-        process_kwargs["stdout"] = subprocess.PIPE
+        process_kwargs.setdefault("stdout", subprocess.PIPE)
         if "cmd_input" in process_kwargs:
             if process_kwargs["cmd_input"] is not None:
                 process_kwargs["input"] = process_kwargs.pop("cmd_input")
@@ -354,6 +398,13 @@ class Lab(Layer):
             "CLAB_LABDIR_BASE": self.state_directory,
         }
         return self.run_cmd(cmd, cmd_input=cmd_input, env=env)
+
+    def run_docker_cmd(self, cmd: list[str], **process_kwargs) -> subprocess.CompletedProcess:
+        cmd = [
+            shutil.which("docker"),
+            *cmd,
+        ]
+        return self.run_cmd(cmd, **process_kwargs)
 
     def start(self):
         """Start the current lab."""

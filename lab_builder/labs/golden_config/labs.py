@@ -18,7 +18,7 @@ class GoldenConfigLab(Lab):
 
     binds = {
         "nautobot": ["./fixtures/*:/fixtures"],
-        "suzieq-poller": ["./inventory.yml:/home/suzieq/inventory.yml"],
+        "suzieq": ["./inventory.yml:/home/suzieq/inventory.yml"],
         "git-server": [],
     }
 

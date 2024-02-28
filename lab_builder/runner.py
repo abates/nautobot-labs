@@ -1,3 +1,5 @@
+"""The lab runner definition."""
+
 import cmd2
 import importlib
 from pprint import pprint
@@ -7,6 +9,7 @@ import platformdirs
 from .lab import Lab
 
 def check_running(func):
+    """Method decorator that makes sure the lab is already running before continuing to the decorated method."""
     def decorator(self: "LabRunner", *args, **kwargs):
         if not self.lab.running:
             print(f"Error: {self.lab.name} is not running.")
@@ -56,12 +59,10 @@ class LabRunner(cmd2.Cmd):
         print()
         return True
 
-    def do_run(self, args):
-        # args = args.split()
-        # try:
-        #     service = self.lab.services[args[0]]
-        # except
-        print("RUNNING:", args)
+    @check_running
+    def do_run(self, statement: cmd2.Statement):
+        command, command_args = self.lab.get_command(statement.arg_list)
+        command(*command_args)
     
     def complete_run(self, text: str, line: str, begidx: int, endidx: int):
         # The command that is being auto-completed

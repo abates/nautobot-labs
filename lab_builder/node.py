@@ -3,6 +3,7 @@ import json
 import os
 import shlex
 import shutil
+import sys
 from typing import TypedDict
 from dataclasses import dataclass
 from lab_builder.lab import Definition
@@ -158,7 +159,6 @@ class Node(Definition, ConfigObjectMixin):
         if container_file is None and image is None:
             raise ValueError(f"Either containerfile or image must be specified for {self.__class__.__name__}.")
         if not ((container_file is None) ^ (image is None)):
-            print(container_file, image)
             raise ValueError(f"Both containerfile and image are set for {self.__class__.__name__}. Choose only one.")
         
         if container_file:
@@ -180,7 +180,24 @@ class Node(Definition, ConfigObjectMixin):
         shutil.rmtree(self.state_directory)
 
     def run_cmd(self, cmd, working_directory=None, interactive=False):
+        if isinstance(cmd, str):
+            cmd = [cmd]
         shell_command = shlex.join(cmd)
+
+        if interactive:
+            cmd = [
+                "exec",
+                "-it",
+            ]
+            if working_directory:
+                cmd.extend(["-w", working_directory])
+            cmd.extend([
+                f"clab-{self.lab.name}-{self.name}",
+                shell_command,
+            ])
+            self.lab.run_docker_cmd(cmd, stdout=sys.stdout)
+            return None
+
         if working_directory:
             shell_command = " ".join([
                 "sh",
@@ -192,12 +209,8 @@ class Node(Definition, ConfigObjectMixin):
             "exec",
             "--label", f"clab-node-name={self.name}",
             "--format", "json",
+            "--cmd", shell_command,
         ]
-
-        if interactive:
-            cmd.append("-it")
-        
-        cmd.extend(["--cmd", shell_command])
 
         process = self.lab.run_clab_cmd(cmd)
         output = json.loads(process.stdout)

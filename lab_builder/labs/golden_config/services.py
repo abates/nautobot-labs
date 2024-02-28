@@ -3,33 +3,27 @@ from lab_builder.lab import Service
 from lab_builder.node import LinuxNode
 from lab_builder.labs.common import CEOS
 
-class SuzieqPoller(LinuxNode):
+class Suzieq(LinuxNode):
     """Suzieq Poller Node."""
     name = "suzieq-poller"
     image = "netenglabs/suzieq:latest"
-
-
-class SuzieqAnalyzer(LinuxNode):
-    """Suzieq Analyzer Node."""
-    name = "suzieq-analyzer"
-    image = "netenglabs/suzieq:latest"
-
+    entrypoint = "/usr/local/bin/sq-poller -I /home/suzieq/inventory.yml"
 
 class SuzieqService(Service):
     """Lab service to start the suzieq service and analyzer."""
     nodes = {
-        "sq-poller": SuzieqPoller,
-        "sq-analyzer": SuzieqAnalyzer
+        "suzieq": Suzieq,
     }
 
     binds = {
-        "sq-poller": [
+        "suzieq": [
             "suzieq:/home/suzieq/parquet",
         ],
-        "sq-analyzer": [
-            "suzieq:/home/suzieq/parquet",
-        ]
     }
+
+    def do_cli(self):
+        """Start the SuzieQ CLI."""
+        self.nodes["suzieq"].run_cmd("/usr/local/bin/suzieq-cli", working_directory="/home/suzieq", interactive=True)
 
 class LeafSpineNetwork(Service):
     """A simple leaf/spine network of CEOS switches."""

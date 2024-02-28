@@ -5,8 +5,8 @@ import tempfile
 from unittest.mock import Mock, PropertyMock, patch
 import pytest
 
-from lab_builder.lab import Definition, Lab, Service
-from lab_builder.node import Node
+from lab_builder.lab import Definition, Lab, Service, deep_merge
+from lab_builder.node import HealthCheck, Node
 
 
 class AttrTest(Definition):
@@ -41,9 +41,9 @@ resolve_attribute_testcases = {
         "mydict": {"key": "value", "key1": "value1"},
     },
     "Inheritance_with_kwargs": {
-        "obj": AttrTestChild(name="test", mylist=["value2"], mydict={"key2": "value2"}),
-        "mylist": ["value2", "value", "value1"],
-        "mydict": {"key": "value", "key1": "value1", "key2": "value2"},
+        "obj": AttrTestChild(name="test", mylist=["value3"], mydict={"key2": "value3"}),
+        "mylist": ["value3", "value", "value1"],
+        "mydict": {"key": "value", "key1": "value1", "key2": "value3"},
     },
     "Inheritance_override": {
         "obj": AttrTestOverrideChild(name="test", mylist=["value", "value1"], mydict=["value4", "value5"]),
@@ -137,6 +137,12 @@ class TestService(Service):
         "test_node": TestNode,
     }
 
+    binds = {
+        "test_node": [
+            "data1:/data1"
+        ]
+    }
+
 class TestServiceWithLinks(Service):
     """A simple service class (with node links) for testing."""
     name = "TestService"
@@ -163,6 +169,12 @@ class TestLab(Lab):
         "test_service": TestService,
     }
 
+    binds = {
+        "test_node": [
+            "data2:/data2"
+        ]
+    }
+
 
 class TestLabWithLinks(Lab):
     """A simple lab class (with links) for testing."""
@@ -186,6 +198,25 @@ def test_node_directory():
     state_dir = os.path.join(state_dir, "test_node")
     assert lab.services["test_service"].nodes["test_node"].state_directory == state_dir
     assert lab.services["test_service"].nodes["test_node"].definition_directory == base_dir
+
+def test_node_binds():
+    """Confirm that the state and definition directories are the expected paths."""
+    with patch("lab_builder.lab.glob.glob") as glob:
+        glob.side_effect = lambda value: [value]
+        lab = TestLab()
+        node = lab.services["test_service"].nodes["test_node"]
+        node_dir = node.state_directory
+        lab_dir = lab.state_directory
+        service_dir = lab.services["test_service"].state_directory
+        want_binds = [
+            f"{lab_dir}/data2:/data2:ro",
+            f"{service_dir}/data1:/data1:ro",
+            f"{node_dir}:/lab_builder_data",
+        ]
+
+        assert node.binds == want_binds
+# /home/abates/local/devel/nautobot-labs/TestLab/data2:/data2:ro
+# /home/abates/local/devel/nautobot-labs/TestLab/test_service/data2:/data2:ro
 
 def test_running():
     """The `running` property determines if the complete lab is running.

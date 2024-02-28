@@ -12,6 +12,7 @@ typer = {extras = ["all"], version = "^0.9.0"}
 jinja2 = "^3.1.3"
 platformdirs = "^4.1.0"
 cmd2 = "^2.4.3"
+docstring-parser = "^0.15"
 
 
 [tool.poetry.group.dev.dependencies]
