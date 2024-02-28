@@ -143,6 +143,12 @@ class TestService(Service):
         ]
     }
 
+    ports = {
+        "test_node": [
+            "8080:8080"
+        ]
+    }
+
 class TestServiceWithLinks(Service):
     """A simple service class (with node links) for testing."""
     name = "TestService"
@@ -200,7 +206,7 @@ def test_node_directory():
     assert lab.services["test_service"].nodes["test_node"].definition_directory == base_dir
 
 def test_node_binds():
-    """Confirm that the state and definition directories are the expected paths."""
+    """Confirm that nodes get correct binds."""
     with patch("lab_builder.lab.glob.glob") as glob:
         glob.side_effect = lambda value: [value]
         lab = TestLab()
@@ -215,8 +221,13 @@ def test_node_binds():
         ]
 
         assert node.binds == want_binds
-# /home/abates/local/devel/nautobot-labs/TestLab/data2:/data2:ro
-# /home/abates/local/devel/nautobot-labs/TestLab/test_service/data2:/data2:ro
+
+def test_node_ports():
+    """Confirm ports get passed to the node definition."""
+    lab = TestLab()
+    node = lab.services["test_service"].nodes["test_node"].as_dict()
+    want_ports = ["8080:8080"]
+    assert node["ports"] == want_ports
 
 def test_running():
     """The `running` property determines if the complete lab is running.

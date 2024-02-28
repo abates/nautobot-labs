@@ -103,7 +103,7 @@ class NautobotService(Service):
     }
 
     ports = {
-        "nautobot": ["8080/tcp"],
+        "nautobot": ["127.0.0.1:8080:8080/tcp"],
     }
 
     def start(self):

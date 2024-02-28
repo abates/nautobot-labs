@@ -73,7 +73,7 @@ class Definition:
             # from the top most level first. This allows
             # Layers that extend a layer to do overrides
             for _class in reversed(self.__class__.__mro__):
-                if hasattr(_class, attr_name) and getattr(_class, attr_name) is not getattr(self, attr_name):
+                if attr_name in _class.__dict__ and _class.__dict__[attr_name] is not getattr(self, attr_name):
                     self._update_attribute(attr_name, getattr(_class, attr_name))
         keys = list(kwargs.keys())
 
