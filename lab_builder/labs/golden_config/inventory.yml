@@ -1,11 +1,11 @@
 sources:
 - name: static
   hosts:
-  - url: https://admin@clab-leafspine-dc1-spine-1 devtype=eos
-  - url: https://admin@clab-leafspine-dc1-spine-2 devtype=eos
-  - url: https://admin@clab-leafspine-dc1-leaf-1 devtype=eos
-  - url: https://admin@clab-leafspine-dc1-leaf-2 devtype=eos
-  - url: https://admin@clab-leafspine-dc1-leaf-3 devtype=eos
+  - url: https://admin@clab-GoldenConfigLab-dc1-spine-1 devtype=eos
+  - url: https://admin@clab-GoldenConfigLab-dc1-spine-2 devtype=eos
+  - url: https://admin@clab-GoldenConfigLab-dc1-leaf-1 devtype=eos
+  - url: https://admin@clab-GoldenConfigLab-dc1-leaf-2 devtype=eos
+  - url: https://admin@clab-GoldenConfigLab-dc1-leaf-3 devtype=eos
 
 devices:
   - name: devices-using-rest

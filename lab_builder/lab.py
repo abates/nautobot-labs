@@ -518,10 +518,16 @@ class Lab(Layer):
                     "endpoints": [f"{node.name}:{interface_name}", connection],
                 })
 
-        return {
+        topology = {
             "name": self.name,
             "topology": {
               "nodes": {node.name: node.as_dict() for node in self.nodes},
               "links": links,
             }
         }
+        if getattr(self, "ipv4_subnet", None):
+            topology["mgmt"] = {
+                "network": "custom_mgmt",
+                "ipv4-subnet": self.ipv4_subnet,
+            }
+        return topology

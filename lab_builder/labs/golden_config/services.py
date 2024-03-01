@@ -48,3 +48,11 @@ class LeafSpineNetwork(Service):
             "eth3": "dc1-leaf-3:eth2",
         },
     }
+
+    def created(self):
+        super().created()
+        self.nodes["dc1-spine-1"].mgmt_ipv4 = "172.100.100.2"
+        self.nodes["dc1-spine-2"].mgmt_ipv4 = "172.100.100.3"
+        self.nodes["dc1-leaf-1"].mgmt_ipv4 = "172.100.100.10"
+        self.nodes["dc1-leaf-2"].mgmt_ipv4 = "172.100.100.11"
+        self.nodes["dc1-leaf-3"].mgmt_ipv4 = "172.100.100.12"

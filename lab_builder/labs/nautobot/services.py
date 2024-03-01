@@ -29,7 +29,7 @@ class NautobotApp(NautobotBase):
 
         Args:
             container_path (str): The path (within the container) to the
-            fixture file.
+              fixture file.
         """
         cmd = [
             "nautobot-server",
@@ -128,3 +128,22 @@ class NautobotService(Service):
                 searchpath.append(os.path.dirname(inspect.getfile(_class)))
         loader = FileSystemLoader(searchpath=searchpath)
         return Environment(loader=loader).get_template(name)
+
+    def restore_db(self, container_path: str):
+        """Drop the nautobot database and recreate it.
+
+        This command will drop the existing Nautobot database and recreate it from
+        the provided `.sql` file.
+
+        Args:
+            container_path (str): The full path (including filename) to the `.sql` file
+              to be imported in the new Nautobot database. This should be the absolute
+              path within the container, not within the host filesystem.
+        """
+        self.nodes["db"].run_cmd(["/usr/bin/dropdb", "-U", "nautobot", "-f", "nautobot"])
+        self.nodes["db"].run_cmd(["/usr/bin/createdb", "-U", "nautobot", "nautobot"])
+        self.nodes["db"].run_cmd([
+            "/bin/sh",
+            "-c",
+            f"psql -h localhost -U nautobot < {container_path}",
+        ])

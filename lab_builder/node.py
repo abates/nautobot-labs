@@ -104,6 +104,7 @@ class Node(Definition, ConfigObjectMixin):
     binds: list[str]
     ports: list[str]
     links: dict[str, str]
+    mgmt_ipv4: str
 
     def __init__(
             self,
@@ -123,6 +124,7 @@ class Node(Definition, ConfigObjectMixin):
         self.update_dict(values, "entrypoint")
         self.update_dict(values, "health_check", "healthcheck")
         self.update_dict(values, "network_mode", "network-mode", lambda value: value != "bridge")
+        self.update_dict(values, "mgmt_ipv4", "mgmt-ipv4")
         self.update_dict(values, "dependencies", "stages")
         if "stages" in values:
             stages = []
@@ -179,7 +181,7 @@ class Node(Definition, ConfigObjectMixin):
     def destroyed(self):
         shutil.rmtree(self.state_directory)
 
-    def run_cmd(self, cmd, working_directory=None, interactive=False):
+    def run_cmd(self, cmd, working_directory=None, interactive=False, stderr=sys.stderr):
         if isinstance(cmd, str):
             cmd = [cmd]
         shell_command = shlex.join(cmd)
@@ -215,9 +217,11 @@ class Node(Definition, ConfigObjectMixin):
         process = self.lab.run_clab_cmd(cmd)
         output = json.loads(process.stdout)
         output = next(iter(output.values())).pop()
-        if output["return-code"] != 0:
-            print(shell_command)
-            print(output["stderr"])
+        if output["return-code"] != 0 and stderr:
+            print(f"{self.name} Command Failed:", shell_command, file=stderr)
+            print(output["stderr"], file=stderr)
+            print(output["stdout"], file=stderr)
+            
         return output
 
 class NetworkNode(Node):
@@ -236,7 +240,7 @@ class LinuxNode(Node):
         Returns:
             list[str]: The contents of the node's directory
         """
-        output = self.run_cmd(["ls", path])
+        output = self.run_cmd(["ls", path], stderr=None)
         if output["return-code"] == 0:
             if output["stdout"]:
                 return output["stdout"].split("\n")
