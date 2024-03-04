@@ -32,7 +32,9 @@ class DB(LinuxNode):
         "PGPASSWORD": "{NAUTOBOT_DB_PASSWORD}",
     }
 
-    binds = ["data:/var/lib/postgresql/data"]
+    binds: list[Bind] = BindConfig(
+        NamedBind("data", "/var/lib/postgresql/data"),
+    )
 
 
 class Redis(LinuxNode):
@@ -49,9 +51,9 @@ class GitServer(LinuxNode):
 
     containerfile = "containers/git-server/Containerfile"
 
-    binds = [
-        "repos:/internal/repos",
-    ]
+    binds: list[Bind] = BindConfig(
+        NamedBind("repos", "/internal/repos"),
+    )
 
     def started(self):
         super().started()

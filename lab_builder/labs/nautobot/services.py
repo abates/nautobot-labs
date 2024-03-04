@@ -88,23 +88,14 @@ class NautobotService(Service):
         "NAUTOBOT_ALLOWED_HOSTS": "localhost",
     }
 
-    nodes = {
-        "nautobot": NautobotApp,
-        "worker": Worker,
-        "scheduler": Scheduler,
-        "db": DB,
-        "redis": Redis,
-    }
-
-    dependencies = {
-        "nautobot": [Dependency(name="db", state=DependencyState.HEALTHY)],
-        "worker": [Dependency(name="nautobot", state=DependencyState.HEALTHY)],
-        "scheduler": [Dependency(name="nautobot", state=DependencyState.HEALTHY)],
-    }
-
-    ports = {
-        "nautobot": ["127.0.0.1:8080:8080/tcp"],
-    }
+    nautobot: NautobotApp = NodeConfig(
+        dependencies=[Dependency(name="db", state=DependencyState.HEALTHY)],
+        ports=[PortForward("127.0.0.1:8080", "8080/tcp")]
+    )
+    worker: Worker = NodeConfig(dependencies=[Dependency(name="nautobot", state=DependencyState.HEALTHY)])
+    scheduler: Scheduler = NodeConfig(dependencies=[Dependency(name="nautobot", state=DependencyState.HEALTHY)])
+    db: DB
+    redis: Redis
 
     def start(self):
         super().start()

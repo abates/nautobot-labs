@@ -5,8 +5,9 @@ import tempfile
 from unittest.mock import Mock, PropertyMock, patch
 import pytest
 
-from lab_builder.lab import Definition, Lab, Service, deep_merge
-from lab_builder.node import HealthCheck, Node
+from lab_builder.lab import Lab, Service
+from lab_builder.config import Definition, ListField, DictField
+from lab_builder.node import Node
 
 
 class AttrTest(Definition):
@@ -14,12 +15,12 @@ class AttrTest(Definition):
     mydict: dict[str, str]
 
 class AttrTestParent(Definition):
-    mylist: list[str] = ["value"]
-    mydict: dict[str, str] = {"key": "value"}
+    mylist: list[str] = ListField(base_value=["value"])
+    mydict: dict[str, str] = DictField(base_value={"key": "value"})
 
 class AttrTestChild(AttrTestParent):
-    mylist = ["value1"]
-    mydict = {"key1": "value1"}
+    mylist = ListField(base_value=["value1"])
+    mydict = DictField(base_value={"key1": "value1"})
 
 class AttrTestOverrideChild(AttrTest):
     mydict: list[str]

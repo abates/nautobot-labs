@@ -64,6 +64,9 @@ class Definition:
 
         for attr_name, type_hint in type_hints.items():
             attr_value = kwargs.pop(attr_name, None)
+            # TODO: If the field is a definition descriptor
+            # then do what?
+            # Else, if the field has a default value set do nothing (inherit),
             setattr(self, attr_name, type_hint())
             
             if attr_value:
