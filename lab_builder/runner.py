@@ -6,16 +6,19 @@ from pprint import pprint
 
 import platformdirs
 
+from lab_builder import signal
+from lab_builder.adapters.containerlab import Containerlab
+
 from .lab import Lab
 
 def check_running(func):
     """Method decorator that makes sure the lab is already running before continuing to the decorated method."""
     def decorator(self: "LabRunner", *args, **kwargs):
-        if not self.lab.running:
+        if not self.adapter.running(self.lab):
             print(f"Error: {self.lab.name} is not running.")
             return
-        if self.lab.needs_reconfigure:
-            self.lab.start()
+        if self.adapter.needs_reconfigure:
+            self.adapter.start()
         func(self, *args, **kwargs)
     return decorator
 
@@ -27,11 +30,11 @@ class LabRunner(cmd2.Cmd):
 
     def __init__(self, lab: str):
         lab = lab.replace("/", ".").removesuffix(".py")
-        # sys.path.append(os.path.join(os.curdir, ".."))
-        # importlib.import_module("labs")
         module = importlib.import_module(lab)
         base_dir = platformdirs.user_data_dir(appname="lab_builder", ensure_exists=True)
-        self.lab: Lab = module.lab(base_dir=base_dir)
+        self.adapter = Containerlab()
+        self.lab: Lab = module.lab(adapter=self.adapter, base_dir=base_dir)
+        signal.emit(signal.INITIALIZED, self.lab)
         super().__init__()
 
     @property
@@ -41,18 +44,16 @@ class LabRunner(cmd2.Cmd):
 
     def do_start(self, _):
         """Run the `start` command."""
-        self.lab.start()
+        self.adapter.start(self.lab)
 
     def do_inspect(self, _):
         """Run the `inspect` command."""
-        if self.lab is None:
-            self.lab = self.lab()
-        pprint(self.lab.inspect(), indent=2)
+        pprint(self.adapter.inspect(self.lab), indent=2)
 
     def do_stop(self, _):
         """Run the `stop` command."""
         print("Stopping", self.lab.name)
-        self.lab.stop()
+        self.adapter.stop(self.lab)
 
     def do_exit(self, _):
         """Run the `exit` command."""

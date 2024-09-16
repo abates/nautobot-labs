@@ -5,8 +5,6 @@ from .services import NautobotService
 class BasicNautobotLab(Lab):
     """A lab that contains a simple Nautobot application stack."""
     name = "Nautobot"
-    services = {
-        "nautobot": NautobotService,
-    }
+    nautobot: NautobotService
 
 lab = BasicNautobotLab

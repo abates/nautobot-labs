@@ -4,6 +4,4 @@ from lab_builder.labs.nautobot.services import NautobotService
 
 
 class NautobotWithGitService(NautobotService):
-    nodes = {
-        "git-server": GitServer,
-    }
+    git_server: GitServer

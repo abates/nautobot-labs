@@ -1,6 +1,9 @@
 """The config contexts lab definition."""
+from os import path
+
 from lab_builder.lab import Lab
 from lab_builder.labs.config_contexts.services import NautobotWithGitService
+from lab_builder import config
 
 from .services import LeafSpineNetwork, SuzieqService
 
@@ -10,20 +13,28 @@ class GoldenConfigLab(Lab):
     description = "A lab to demonstrate git-based config contexts."
     ipv4_subnet = "172.100.100.0/24"
 
-    services = {
-        "nautobot": NautobotWithGitService,
-        "suzieq": SuzieqService,
-        "leaf-spine-network": LeafSpineNetwork,
-    }
+    nautobot: NautobotWithGitService = config.ServiceConfig(
+        db=config.NodeConfig(
+            binds=config.Binds(config.FilesystemBind(
+                mount_point="/tmp/nautobot.sql",
+                local_path=path.join(path.dirname(__file__), "nautobot.sql"),
+                read_only=True,
+            )),
+        ),
+        suzieq=config.NodeConfig(
+            binds=config.Binds(config.FilesystemBind(
+                mount_point="/home/suzieq/inventory.yml",
+                local_path=path.join(path.dirname(__file__), "inventory.yml"),
+                read_only=True,
+            )),
+        ),
+    )
 
-    binds = {
-        "db": ["./nautobot.sql:/tmp/nautobot.sql"],
-        "suzieq": ["./inventory.yml:/home/suzieq/inventory.yml"],
-        "git-server": [],
-    }
+    suzieq: SuzieqService
+    leaf_spine_network: LeafSpineNetwork
 
     def started(self):
         super().started()
-        self.services["nautobot"].restore_db("/tmp/nautobot.sql")
+        self.nautobot.restore_db("/tmp/nautobot.sql")
     
 lab = GoldenConfigLab

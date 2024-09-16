@@ -1,5 +1,8 @@
 {
     "python.testing.pytestArgs": [
+        "-vv",
+        "--cov=lab_builder/",
+        "--cov-report=xml",
         "tests"
     ],
     "python.testing.unittestEnabled": false,
